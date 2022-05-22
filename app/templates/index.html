@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Lane Merge</title>
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDT6ZFUslt5wqq1NYoljrPZyyYvAlLRddU&libraries=visualization" async></script>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:ital@1&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="static/styles/styles.css">
+        <script src="https://kit.fontawesome.com/e347a7d6fb.js" crossorigin="anonymous"></script>
+
+        <script>
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 20,
+                center: {lat: 40.640259, lng: -8.663455},
+                mapTypeId: "satellite",
+            });
+            
+            // Create an info window to share between markers.
+            const infoWindow = new google.maps.InfoWindow();
+
+            // RSU 
+            const rsu = new google.maps.Marker({
+                position: new google.maps.LatLng(40.640585, -8.663218),
+                map: map,
+                icon: {
+                    url: "static/rsu.png",
+                    scaledSize: new google.maps.Size(60, 60)
+                },
+                title: "RSU",
+            });
+
+            rsu.addListener("click", () => {
+                infoWindow.close();
+                infoWindow.setContent(rsu.getTitle());
+                infoWindow.open(rsu.getMap(), rsu);
+            });
+
+            // OBU 1 
+            const obu_1 = new google.maps.Marker({
+                position: new google.maps.LatLng(40.640375, -8.663347),
+                map: map,
+                icon: {
+                    url: "static/vehicle_4.png",
+                    scaledSize: new google.maps.Size(50, 50)
+                },
+                title: "OBU_1",
+            });
+
+            obu_1.addListener("click", () => {
+                infoWindow.close();
+                infoWindow.setContent(obu_1.getTitle());
+                infoWindow.open(obu_1.getMap(), obu_1);
+            });
+
+            // OBU 2
+            const obu_2 = new google.maps.Marker({
+                position: new google.maps.LatLng(40.640535, -8.663015),
+                map: map,
+                icon: {
+                    url: "static/vehicle_5.png",
+                    scaledSize: new google.maps.Size(50, 50)
+                },
+                title: "OBU_2",
+            });
+
+            obu_2.addListener("click", () => {
+                infoWindow.close();
+                infoWindow.setContent(obu_2.getTitle());
+                infoWindow.open(obu_2.getMap(), obu_2);
+            });
+
+            // OBU 3
+            const obu_3 = new google.maps.Marker({
+                position: new google.maps.LatLng(40.640234, -8.663464),
+                map: map,
+                icon: {
+                    url: "static/vehicle_2.png",
+                    scaledSize: new google.maps.Size(50, 50)
+                },
+                title: "OBU_3",
+            });
+
+            obu_3.addListener("click", () => {
+                infoWindow.close();
+                infoWindow.setContent(obu_3.getTitle());
+                infoWindow.open(obu_3.getMap(), obu_3);
+            });
+
+            // OBU 4
+            const obu_4 = new google.maps.Marker({
+                position: new google.maps.LatLng(40.640422, -8.663217),
+                map: map,
+                icon: {
+                    url: "static/vehicle_3.png",
+                    scaledSize: new google.maps.Size(50, 50)
+                },
+                title: "OBU_4",
+            });
+
+            obu_4.addListener("click", () => {
+                infoWindow.close();
+                infoWindow.setContent(obu_4.getTitle());
+                infoWindow.open(obu_4.getMap(), obu_4);
+            });
+
+            // OBU 5
+            const obu_5 = new google.maps.Marker({
+                position: new google.maps.LatLng(40.640093, -8.663590),
+                map: map,
+                icon: {
+                    url: "static/vehicle_1.png",
+                    scaledSize: new google.maps.Size(50, 50)
+                },
+                title: "OBU_5",
+            });
+
+            obu_5.addListener("click", () => {
+                infoWindow.close();
+                infoWindow.setContent(obu_5.getTitle());
+                infoWindow.open(obu_5.getMap(), obu_5);
+            });
+        } 
+        </script>
+    </head>
+
+    <body onload="initMap()">
+        <!-- Navbar -->
+        <div class="topnav">
+            <a><img src="static/logo.png" style="width: 305px; height: 80px;"></a>
+        </div>
+        
+        <div>
+            <div class="split left">
+                <h1><i class="fa-solid fa-circle-info fa-xs"></i> Informations</h1>
+                
+                <!-- RSU Informations -->
+                <h3 style="padding-top: 10px;">RSU</h3>
+                <div class="info">
+                    <p>
+                        <i class="fa-solid fa-right-to-bracket"></i> OBU_1 &emsp;
+                        <i class="fa-solid fa-right-from-bracket"></i> OBU_2 
+                    </p>
+                </div>
+                <hr>
+
+                <!-- OBU 1 Informations -->
+                <h3>OBU_1</h3>
+                <div class="info">
+                    <p>
+                        <i class="fa-solid fa-gauge-high"></i> 70km/h &emsp;
+                        <i class="fa-solid fa-car-side"></i> Merging 
+                    </p>
+                </div>
+                <hr>
+
+                <!-- OBU 2 Informations -->
+                <h3>OBU_2</h3>
+                <div class="info">
+                    <p>
+                        <i class="fa-solid fa-gauge-high"></i> 110km/h &emsp; 
+                        <i class="fa-solid fa-car-side"></i> Changing Position
+                    </p>
+                </div>
+                <hr>
+
+                <!-- OBU 3 Informations -->
+                <h3>OBU_3</h3>
+                <div class="info">
+                    <p>
+                        <i class="fa-solid fa-gauge-high"></i> 100km/h &emsp;
+                        <i class="fa-solid fa-car-side"></i> Driving
+                    </p>
+                </div>
+                <hr>
+
+                <!-- OBU 4 Informations -->
+                <h3>OBU_4</h3>
+                <div class="info">
+                    <p>
+                        <i class="fa-solid fa-gauge-high"></i> 90km/h &emsp;
+                        <i class="fa-solid fa-car-side"></i> Driving
+                    </p>
+                </div>
+                <hr>
+
+                <!-- OBU 5 Informations -->
+                <h3>OBU_5</h3>
+                <div class="info">
+                    <p>
+                        <i class="fa-solid fa-gauge-high"></i> 120km/h &emsp;
+                        <i class="fa-solid fa-car-side"></i> Changing Position
+                    </p>
+                </div>
+                <hr>
+
+                <h4>Label</h4>
+                <div class="label">
+                    <p>
+                        <i class="fa-solid fa-right-to-bracket"></i> Message sender &emsp; &nbsp; &nbsp;
+                        <i class="fa-solid fa-right-to-bracket"></i> Message receiver
+                    </p>
+                    <p>
+                        <i class="fa-solid fa-gauge-high"></i> Speed &emsp; &emsp; &emsp; &emsp; &emsp; &nbsp;
+                        <i class="fa-solid fa-car-side"></i> Actual state
+                    </p>
+                </div>
+            </div>
+
+            <div class="split right">
+                <div id='map'></div>
+            </div> 
+        </div>
+        
+        <div class="footer">
+            <p>Martim Neves & Tiago Dias<br>
+            TP1 - G04<br>
+            <span>&copy;</span> RSA - 2021/2022</p>
+        </div>
+    </body>
+</html>
