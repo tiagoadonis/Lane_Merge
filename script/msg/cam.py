@@ -1,3 +1,6 @@
+# Authors: Tiago Dias   NMEC: 88896
+#          Martim Neves NMEC: 88904
+
 # CAM: multi attribute 'PublicTransportContainer'
 class PublicTransportContainer:
     embarkation_status: bool
@@ -37,9 +40,9 @@ class CAM:
     gas_pedal: bool
     heading: int
     heading_conf: int
-    latitude: int
+    latitude: float
     length: int
-    longitude: int
+    longitude: float
     semi_major_conf: int
     semi_major_orient: int
     semi_minor_conf: int
@@ -55,7 +58,7 @@ class CAM:
     def __init__(self, acc_engaged: bool, acceleration: int, altitude: int, altitude_conf: int, 
                  brake_pedal: bool, collision_warning: bool, cruise_control: bool, curvature: int, 
                  drive_direction: str, emergency_brake: bool, gas_pedal: bool, heading: int, 
-                 heading_conf: int, latitude: int, length: int, longitude: int, semi_major_conf: int, 
+                 heading_conf: int, latitude: float, length: int, longitude: float, semi_major_conf: int, 
                  semi_major_orient: int, semi_minor_conf: int, special_vehicle: SpecialVehicle, 
                  speed: int, speed_conf: int, speed_limiter: bool, station_id: int, station_type: int, 
                  width: int, yaw_rate: int):
@@ -104,9 +107,9 @@ class CAM:
                 \"gasPedal\":"+str(self.gas_pedal).lower()+",\
                 \"heading\":"+str(self.heading)+",\
                 \"headingConf\":"+str(self.heading_conf)+",\
-                \"latitude\":"+str(self.latitude)+",\
+                \"latitude\":"+str(self.latitude * (10**7))+",\
                 \"length\":"+str(self.length)+",\
-                \"longitude\":"+str(self.longitude)+",\
+                \"longitude\":"+str(self.longitude * (10**7))+",\
                 \"semiMajorConf\":"+str(self.semi_major_conf)+",\
                 \"semiMajorOrient\":"+str(self.semi_major_orient)+",\
                 \"semiMinorConf\":"+str(self.semi_minor_conf)+",\

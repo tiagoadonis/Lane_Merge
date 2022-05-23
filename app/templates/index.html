@@ -8,122 +8,140 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Roboto:ital@1&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="static/styles/styles.css">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
         <script src="https://kit.fontawesome.com/e347a7d6fb.js" crossorigin="anonymous"></script>
 
         <script>
-        function initMap() {
-            map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 20,
-                center: {lat: 40.640259, lng: -8.663455},
-                mapTypeId: "satellite",
-            });
+            function initMap() {
+                map = new google.maps.Map(document.getElementById("map"), {
+                    zoom: 20,
+                    center: {lat: 40.640259, lng: -8.663455},
+                    mapTypeId: "satellite",
+                });
+
+                // Create an info window to share between markers.
+                const infoWindow = new google.maps.InfoWindow();
             
-            // Create an info window to share between markers.
-            const infoWindow = new google.maps.InfoWindow();
+                // RSU 
+                const rsu = new google.maps.Marker({
+                    position: new google.maps.LatLng(40.640585, -8.663218),
+                    map: map,
+                    icon: {
+                        url: "static/rsu.png",
+                        scaledSize: new google.maps.Size(60, 60)
+                    },
+                    title: "RSU",
+                });
+            
+                rsu.addListener("click", () => {
+                    infoWindow.close();
+                    infoWindow.setContent(rsu.getTitle());
+                    infoWindow.open(rsu.getMap(), rsu);
+                });
+            
+                // OBU 1 
+                var obu_1 = new google.maps.Marker({
+                    position: new google.maps.LatLng(40.640455, -8.663244),
+                    map: map,
+                    icon: {
+                        url: "static/vehicle_4.png",
+                        scaledSize: new google.maps.Size(50, 50)
+                    },
+                    title: "OBU_1",
+                });
 
-            // RSU 
-            const rsu = new google.maps.Marker({
-                position: new google.maps.LatLng(40.640585, -8.663218),
-                map: map,
-                icon: {
-                    url: "static/rsu.png",
-                    scaledSize: new google.maps.Size(60, 60)
-                },
-                title: "RSU",
-            });
+                obu_1.addListener("click", () => {
+                    infoWindow.close();
+                    infoWindow.setContent(obu_1.getTitle());
+                    infoWindow.open(obu_1.getMap(), obu_1);
+                });
+                
+                var coordinates_obu1 = JSON.parse('{{coordinates_obu1}}');
 
-            rsu.addListener("click", () => {
-                infoWindow.close();
-                infoWindow.setContent(rsu.getTitle());
-                infoWindow.open(rsu.getMap(), rsu);
-            });
+                // OBU 2
+                const obu_2 = new google.maps.Marker({
+                    position: new google.maps.LatLng(40.640535, -8.663015),
+                    map: map,
+                    icon: {
+                        url: "static/vehicle_5.png",
+                        scaledSize: new google.maps.Size(50, 50)
+                    },
+                    title: "OBU_2",
+                });
+            
+                obu_2.addListener("click", () => {
+                    infoWindow.close();
+                    infoWindow.setContent(obu_2.getTitle());
+                    infoWindow.open(obu_2.getMap(), obu_2);
+                });
 
-            // OBU 1 
-            const obu_1 = new google.maps.Marker({
-                position: new google.maps.LatLng(40.640375, -8.663347),
-                map: map,
-                icon: {
-                    url: "static/vehicle_4.png",
-                    scaledSize: new google.maps.Size(50, 50)
-                },
-                title: "OBU_1",
-            });
+                var coordinates_obu2 = JSON.parse('{{coordinates_obu2}}');
 
-            obu_1.addListener("click", () => {
-                infoWindow.close();
-                infoWindow.setContent(obu_1.getTitle());
-                infoWindow.open(obu_1.getMap(), obu_1);
-            });
+                updateCoordinates(obu_1, coordinates_obu1, obu_2, coordinates_obu2);
 
-            // OBU 2
-            const obu_2 = new google.maps.Marker({
-                position: new google.maps.LatLng(40.640535, -8.663015),
-                map: map,
-                icon: {
-                    url: "static/vehicle_5.png",
-                    scaledSize: new google.maps.Size(50, 50)
-                },
-                title: "OBU_2",
-            });
+                // // OBU 3
+                // const obu_3 = new google.maps.Marker({
+                //     position: new google.maps.LatLng(40.640234, -8.663464),
+                //     map: map,
+                //     icon: {
+                //         url: "static/vehicle_2.png",
+                //         scaledSize: new google.maps.Size(50, 50)
+                //     },
+                //     title: "OBU_3",
+                // });
+            
+                // obu_3.addListener("click", () => {
+                //     infoWindow.close();
+                //     infoWindow.setContent(obu_3.getTitle());
+                //     infoWindow.open(obu_3.getMap(), obu_3);
+                // });
+            
+                // // OBU 4
+                // const obu_4 = new google.maps.Marker({
+                //     position: new google.maps.LatLng(40.640422, -8.663217),
+                //     map: map,
+                //     icon: {
+                //         url: "static/vehicle_3.png",
+                //         scaledSize: new google.maps.Size(50, 50)
+                //     },
+                //     title: "OBU_4",
+                // });
+            
+                // obu_4.addListener("click", () => {
+                //     infoWindow.close();
+                //     infoWindow.setContent(obu_4.getTitle());
+                //     infoWindow.open(obu_4.getMap(), obu_4);
+                // });
+            
+                // // OBU 5
+                // const obu_5 = new google.maps.Marker({
+                //     position: new google.maps.LatLng(40.640093, -8.663590),
+                //     map: map,
+                //     icon: {
+                //         url: "static/vehicle_1.png",
+                //         scaledSize: new google.maps.Size(50, 50)
+                //     },
+                //     title: "OBU_5",
+                // });
+            
+                // obu_5.addListener("click", () => {
+                //     infoWindow.close();
+                //     infoWindow.setContent(obu_5.getTitle());
+                //     infoWindow.open(obu_5.getMap(), obu_5);
+                // });
+            } 
 
-            obu_2.addListener("click", () => {
-                infoWindow.close();
-                infoWindow.setContent(obu_2.getTitle());
-                infoWindow.open(obu_2.getMap(), obu_2);
-            });
+            function sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
 
-            // OBU 3
-            const obu_3 = new google.maps.Marker({
-                position: new google.maps.LatLng(40.640234, -8.663464),
-                map: map,
-                icon: {
-                    url: "static/vehicle_2.png",
-                    scaledSize: new google.maps.Size(50, 50)
-                },
-                title: "OBU_3",
-            });
-
-            obu_3.addListener("click", () => {
-                infoWindow.close();
-                infoWindow.setContent(obu_3.getTitle());
-                infoWindow.open(obu_3.getMap(), obu_3);
-            });
-
-            // OBU 4
-            const obu_4 = new google.maps.Marker({
-                position: new google.maps.LatLng(40.640422, -8.663217),
-                map: map,
-                icon: {
-                    url: "static/vehicle_3.png",
-                    scaledSize: new google.maps.Size(50, 50)
-                },
-                title: "OBU_4",
-            });
-
-            obu_4.addListener("click", () => {
-                infoWindow.close();
-                infoWindow.setContent(obu_4.getTitle());
-                infoWindow.open(obu_4.getMap(), obu_4);
-            });
-
-            // OBU 5
-            const obu_5 = new google.maps.Marker({
-                position: new google.maps.LatLng(40.640093, -8.663590),
-                map: map,
-                icon: {
-                    url: "static/vehicle_1.png",
-                    scaledSize: new google.maps.Size(50, 50)
-                },
-                title: "OBU_5",
-            });
-
-            obu_5.addListener("click", () => {
-                infoWindow.close();
-                infoWindow.setContent(obu_5.getTitle());
-                infoWindow.open(obu_5.getMap(), obu_5);
-            });
-        } 
+            async function updateCoordinates(obu_1, coordinates_obu1, obu_2, coordinates_obu2){
+                for(var i = 0; i < coordinates_obu1.length; i++){
+                    obu_1.setPosition(new google.maps.LatLng(coordinates_obu1[i][0], coordinates_obu1[i][1]));
+                    obu_2.setPosition(new google.maps.LatLng(coordinates_obu2[i][0], coordinates_obu2[i][1]));
+                    await sleep(1000);
+                }
+            }
         </script>
     </head>
 
@@ -151,7 +169,7 @@
                 <h3>OBU_1</h3>
                 <div class="info">
                     <p>
-                        <i class="fa-solid fa-gauge-high"></i> 70km/h &emsp;
+                        <i class="fa-solid fa-gauge-high"></i> {{obu1_speed}}km/h &emsp;
                         <i class="fa-solid fa-car-side"></i> Merging 
                     </p>
                 </div>

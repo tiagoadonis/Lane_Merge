@@ -1,3 +1,6 @@
+# Authors: Tiago Dias   NMEC: 88896
+#          Martim Neves NMEC: 88904
+
 from typing import Optional, List
 from xmlrpc.client import Boolean, boolean
 
@@ -49,8 +52,8 @@ class ReferencePosition:
 
     # Developer-friendly string representation of the object
     def __repr__(self):
-        return "\"latitude\":"+str(self.latitude)+",\
-                \"longitude\":"+str(self.longitude)+",\
+        return "\"latitude\":"+str(self.latitude * (10**7))+",\
+                \"longitude\":"+str(self.longitude * (10**7))+",\
                 \"positionConfidenceEllipse\":{"+repr(self.position_confidence_ellipse)+"},\
                 \"altitude\":{"+repr(self.altitude)+"}"
 

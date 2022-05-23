@@ -3,9 +3,9 @@
 
 import paho.mqtt.client as mqttClient
 import time
-from cam import *
-from denm import *
-from cpm import *
+from script.msg.cam import *
+from script.msg.denm import *
+from script.msg.cpm import *
 
 # Global variables
 id = "Lane Merge"
@@ -41,14 +41,13 @@ def publish(client):
 
         # CAM message to test
         cam_msg = CAM(True, 0, 800001, 15, True, True, True, 1023, "FORWARD", True, False, 3601, 127,
-                  400000000, 100, -80000000, 4095, 3601, 4095, 
+                  40.640551, 100, -8.663130, 4095, 3601, 4095, 
                   SpecialVehicle(PublicTransportContainer(False)), 16383, 127, True, 1, 15, 30, 0)
         
         # DENM message to test
         denm_msg = DENM(Management(ActionID(1798587532, 0), 1626453837.658, 1626453837.658, 
-                   EventPosition(40.637799251415686, -8.652353364491056, 
-                   PositionConfidenceEllipse_DENM(0, 0, 0), Altitude_DENM(0, 1)), 0, 0), Situation(7, 
-                   EventType(14, 14)))
+                   EventPosition(40.640551, -8.663130, PositionConfidenceEllipse_DENM(0, 0, 0), 
+                   Altitude_DENM(0, 1)), 0, 0), Situation(7, EventType(14, 14)))
 
         # CPM message to test
         sensors_list = [SensorInformationContainer(1, 1, DetectionArea(StationarySensorRectangle(750, 20, 3601))), 
@@ -75,7 +74,7 @@ def publish(client):
                   ReferencePosition(40.64088, -8.65397, PositionConfidenceEllipse_CPM(4095, 4095, 0.0), 
                   Altitude_CPM(2.9, 14))), StationDataContainer(
                   OriginatingVehicleContainer(Heading(3601, 127), Speed(16383, 127), 0)), 
-                  list(sensors_list), list(objects_list), 2))
+                  list(sensors_list), list(objects_list), len(objects_list)))
 
         result = client.publish(cpm_publish_topic, repr(cpm_msg))
     
@@ -83,16 +82,16 @@ def publish(client):
         status = result[0]
 
         if status == 0:
-            print(f"Send msg to topic '{cpm_publish_topic}'")
+            print("Send msg to topic "+cpm_publish_topic)
         else:
-            print(f"Failed to send message to topic '{cpm_publish_topic}'")
+            print("Failed to send message to topic "+cpm_publish_topic)
 
-# Subscribes the topic "vanetza/out/cam" -> it receives an client of the mqttClient type
+# Subscribes the topic -> it receives an client of the mqttClient type
 def subscribe(client):
     def on_message(client, userdata, msg):
         print(f"Received `{msg.payload.decode()}`")
 
-    client.subscribe(cpm_subscribe_topic)
+    client.subscribe(cam_subscribe_topic)
     client.on_message = on_message
 
 # To run the main methods of the mqttClient
