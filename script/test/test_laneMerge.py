@@ -91,15 +91,15 @@ def subscribe(client):
     def on_message(client, userdata, msg):
         print(f"Received `{msg.payload.decode()}`")
 
-    client.subscribe(cam_subscribe_topic)
+    client.subscribe("#")
     client.on_message = on_message
 
 # To run the main methods of the mqttClient
 def run():
     client = connect_mqtt()
-    publish(client)
-    #subscribe(client)
-    #client.loop_forever()
+    #publish(client)
+    subscribe(client)
+    client.loop_forever()
 
 # ------------------------------------------ Main Function ---------------------------------------- 
 if __name__ == '__main__':
