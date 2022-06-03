@@ -37,7 +37,6 @@ class RSU(threading.Thread):
     # Method to publish the CAM messages at a 1Hz frequency
     # TODO -> we can use the vanetza CAM periodically messages at 1Hz frequency
     # TODO Future Work: the fields "acceleration", "brakePedal" and "gasPedal" could be variables
-    # TODO -> i put the altitude at 8m because it's Aveiro's altitude value
     # data -> list with the variables data 
     # data[0]: latitude;
     # data[1]: longitude;
@@ -59,8 +58,6 @@ class RSU(threading.Thread):
     #
     # TODO Future Work: the field "originatingStationID" -> the id of the DENM sender to coorelate 
     #      with the "stationID" field of the CAM messages 
-    # TODO -> what about the "detectionTime" and "referenceTime" fields?
-    # TODO -> i put the altitude at 8m because it's Aveiro's altitude value
     # data -> list with the variables data 
     # data[0]: latitude;
     # data[1]: longitude;
@@ -82,7 +79,7 @@ class RSU(threading.Thread):
     # Subscribes the CAM and DENM topic -> it receives an client of the mqttClient type
     def subscribe(self):
         def on_message(client, userdata, msg):
-            print("RSU"+str(self.id)+": received "+msg.payload.decode())
+            print("RSU_"+str(self.id)+": received "+msg.payload.decode())
 
         self.client.subscribe([("vanetza/out/cam", 0), ("vanetza/out/denm", 1)])
         self.client.on_message = on_message

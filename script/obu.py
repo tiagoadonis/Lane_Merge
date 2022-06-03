@@ -38,7 +38,6 @@ class OBU(threading.Thread):
 
     # Method to publish the CAM messages
     # TODO Future Work: the fields "acceleration", "brakePedal" and "gasPedal" could be variables
-    # TODO -> i put the altitude at 8m because it's Aveiro's altitude value
     # data -> list with the variables data 
     # data[0]: latitude;
     # data[1]: longitude;
@@ -59,8 +58,6 @@ class OBU(threading.Thread):
     # Method to publish the DENM messages
     # TODO Future Work: the field "originatingStationID" -> the id of the DENM sender to coorelate 
     #      with the "stationID" field of the CAM messages 
-    # TODO -> what about the "detectionTime" and "referenceTime" fields?
-    # TODO -> i put the altitude at 8m because it's Aveiro's altitude value
     # data -> list with the variables data 
     # data[0]: latitude;
     # data[1]: longitude;
