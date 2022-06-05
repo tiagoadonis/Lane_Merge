@@ -5,7 +5,8 @@ import threading
 from time import sleep
 from obu import *
 from rsu import *
-from decimal import *
+import geopy
+import geopy.distance
 
 # Global variables
 rsu_ip = "192.168.98.10"
@@ -21,62 +22,73 @@ obu_1_start = [40.640571, -8.663110]
 # Coordinates of OBU_2's first position
 obu_2_start = [40.640615, -8.662906]
 
+# Speed values
+speed = [60, 80, 100, 120, 140]
+
 # Subscribe Topics
 cam_subscribe_topic = "vanetza/out/cam"
 denm_subscribe_topic = "vanetza/out/denm"
 cpm_subscribe_topic = "vanetza/out/cpm"
 
 # DENM "causeCodes" and "subCauseCodes"
-causeCodes = {"Merge situation": "31", "Change position": "32", "Reduce the speed": "33", 
-              "Increase the speed": "34", "Mantain speed": "35"}
+causeCodes = {"Merge situation": 31, "Change position": 32, "Reduce the speed": 33, 
+              "Increase the speed": 34, "Mantain speed": 35}
 
 # The causeCode "Merge situation" has the following subCauseCodes
-subCauseCodes = {"Wants to merge": "41", "Going to merge": "42", "Merge done": "43", 
-                 "Abort merge": "44"}
+subCauseCodes = {"Wants to merge": 41, "Going to merge": 42, "Merge done": 43, 
+                 "Abort merge": 44}
 
 # ------------------------------------------ Main Function ---------------------------------------- 
 if __name__ == '__main__':
-    getcontext().prec = 8
-
+    # Create the OBUs
     obu_1 = OBU(obu_1_ip, 1)
-    # obu_1.publish_CAM([40.640551, -8.663130, 80])
-    # obu_1.publish_DENM([40.640551, -8.663130, int(causeCodes["Merge situation"]), 
-    #                     int(subCauseCodes["Wants to merge"])])
-    # obu_1.subscribe(cam_subscribe_topic)
-
     obu_2 = OBU(obu_2_ip, 2)
-    # obu_2.publish_CAM([40.640540, -8.663009, 120])
-    # TODO -> what we pass as "subCauseCode" in a "causeCode" without "subCauseCode"? -> ficar igual ao cause code
 
-    # obu_2.publish_DENM([40.640540, -8.663009, int(causeCodes["Change position"]), 0])
-
+    # Create the RSU
     rsu_1 = RSU(rsu_ip, 3)
-    # rsu_1.publish_CAM([40.640455, -8.663244, 0])
-    # Shares the obu_1 intention of merge
-    # rsu_1.publish_DENM([40.640455, -8.663244, int(causeCodes["Merge situation"]), 
-    #                     int(subCauseCodes["Abort merge"])])
+    
+    # Create the start postion of every OBU
+    start_obu_1 = geopy.Point(obu_1_start[0], obu_1_start[1])
+    start_obu_2 = geopy.Point(obu_2_start[0], obu_2_start[1])
 
-    i = 0
+    # Start the run routine of the subscribe method of every OBU and RSU
     obu_1.start()
     obu_2.start()
-    #rsu_1.start()
-
+    # rsu_1.start()
+    
+    i = 0
     while True:
-        # TODO OBU_1 coords is okay -> coordenadas com metros (geopy.distance)
-        obu_1_coords = [Decimal(obu_1_start[0]) - Decimal(0.0000232*i), 
-                        Decimal(obu_1_start[1]) - Decimal(0.0000285*i)]
+        if (i < 7):
+            pos_obu_1 = geopy.distance.geodesic(meters = 5*i).destination(start_obu_1, 222)
+            # print("["+str(d.latitude)+", "+str(d.longitude)+"],")
+        else:
+            pos_obu_1 = geopy.distance.geodesic(meters = 5*i).destination(start_obu_1, 223)
+            # print("["+str(d.latitude)+", "+str(d.longitude)+"],")
 
-        # print("["+str(obu_1_coords[0])+", "+str(obu_1_coords[1])+"], ")
-        obu_1.publish_CAM([float(obu_1_coords[0]), float(obu_1_coords[1]), 80])
+        # obu_1.publish_CAM([pos_obu_1.latitude, pos_obu_1.longitude, speed[1]])
         
-        rsu_1.publish_CAM([rsu_coords[0], rsu_coords[1], 0])
-        
-        obu_2_coords = [Decimal(obu_2_start[0]) - Decimal(0.0000232*i), 
-                        Decimal(obu_2_start[1]) - Decimal(0.0000485*i)]
-        # print("["+str(obu_2_coords[0])+", "+str(obu_2_coords[1])+"], ")
-        # obu_2.publish_CAM([float(obu_2_coords[0]), float(obu_2_coords[1]), 120])
+        # TODO - DENM msgs with a causeCode without a subCauseCode have the subCauseCode 
+        #        equals to the causeCode 
+        obu_1.publish_DENM([40.640551, -8.663130, causeCodes["Merge situation"], 
+                            subCauseCodes["Wants to merge"]])
 
-        # OBUs and RSU publish CAMs at 1Hz = 1s frequency
-        # OBUs até 10 Hz RSU 1Hz
+        pos_obu_2 = geopy.distance.geodesic(meters=5*i).destination(start_obu_2, 225)
+        # print("["+str(pos_obu_2.latitude)+", "+str(pos_obu_2.longitude)+"],")        
+
+        # obu_2.publish_CAM([pos_obu_2.latitude, pos_obu_2.longitude, speed[3]])
+
+        # OBUs can send CAM msgs untill 10 Hz 
+        # RSUs only send CAM msgs at 1Hz frequency
+
+        # rsu_1.publish_CAM([rsu_coords[0], rsu_coords[1], 0])
+
+        if(len(obu_2.cam_queue) > 0):
+            print(obu_2.cam_queue[0])
+            obu_2.popItemInCamQueue()
+        
+        if(len(obu_2.denm_queue) > 0):
+            print(obu_2.denm_queue[0])
+            obu_2.popItemInDenmQueue()
+
         sleep(1)
         i+=1

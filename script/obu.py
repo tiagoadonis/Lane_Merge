@@ -2,17 +2,18 @@
 #          Martim Neves NMEC: 88904
 
 import paho.mqtt.client as mqttClient
-import string, threading
+import string, threading, json
 from script.msg.cam import *
 from script.msg.cpm import *
 from script.msg.denm import *
-from script.test.test_laneMerge import subscribe
 
 # The class taht represents the OBUs
 class OBU(threading.Thread):
     ip: string
     id: int
-    stationType : int
+    stationType: int
+    cam_queue: list
+    denm_queue: list
     client: mqttClient
 
     # The OBU constructor
@@ -21,6 +22,8 @@ class OBU(threading.Thread):
         self.ip = ip
         self.id = id
         self.stationType = 5                    # OBUs are all station type = 5
+        self.cam_queue = []
+        self.denm_queue = []
         self.client = self.connect_mqtt()
         
     # Method to connect to MQTT
@@ -114,11 +117,41 @@ class OBU(threading.Thread):
     #     else:
     #         print("OBU_"+str(self.id)+": failed to send CPM message to topic vanetza/in/cpm")
 
+    # Gets an Json object from the mesg received in the subscribe method 
+    def getJson(self, msg):
+        # If it's a DENM msg
+        if("fields" in msg):
+            data = { msg["stationID"] : {
+                        "latitude": msg["fields"]["denm"]["management"]["eventPosition"]["latitude"],
+                        "longitude": msg["fields"]["denm"]["management"]["eventPosition"]["longitude"],
+                        "causeCode": msg["fields"]["denm"]["situation"]["eventType"]["causeCode"],
+                        "subCauseCode": msg["fields"]["denm"]["situation"]["eventType"]["subCauseCode"],
+                        }
+                }
+            self.denm_queue.append(data)
+        # If it's a CAM msg
+        else:
+            data = { msg["stationID"] : {
+                        "latitude": msg["latitude"],
+                        "longitude": msg["longitude"],
+                        "speed": msg["speed"]
+                        }
+                }
+            self.cam_queue.append(data)
+
+    # To pop the first item of the CAM msgs queue
+    def popItemInCamQueue(self):
+        self.cam_queue.pop(0)
+    
+    # To pop the first item of the DENM msgs queue
+    def popItemInDenmQueue(self):
+        self.denm_queue.pop(0)
 
     # Subscribes the CAM and DENM topic -> it receives an client of the mqttClient type
     def subscribe(self):
         def on_message(client, userdata, msg):
-            print("OBU_"+str(self.id)+": received "+msg.payload.decode())
+            # print("OBU_"+str(self.id)+": received "+msg.payload.decode())
+            self.getJson( json.loads(msg.payload.decode()) )
 
         self.client.subscribe([("vanetza/out/cam", 0), ("vanetza/out/denm", 1)])
         self.client.on_message = on_message
