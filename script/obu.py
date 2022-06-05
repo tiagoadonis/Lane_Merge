@@ -53,10 +53,13 @@ class OBU(threading.Thread):
         result = self.client.publish("vanetza/in/cam", repr(msg))
         status = result[0]
 
+        # DEBUG ONLY
         if status == 0:
-            print("OBU_"+str(self.id)+": sent CAM msg to topic vanetza/in/cam")
-        else:
-            print("OBU_"+str(self.id)+": failed to send CAM message to topic vanetza/in/cam")
+            # print("OBU_"+str(self.id)+": sent CAM msg to topic vanetza/in/cam")
+            print("OBU_"+str(self.id)+": Latitude: "+str(data[0])+
+                  ", Longitude: "+str(data[1])+", Speed: "+str(data[2]))
+        # else:
+        #     print("OBU_"+str(self.id)+": failed to send CAM message to topic vanetza/in/cam")
 
     # Method to publish the DENM messages
     # TODO Future Work: the field "originatingStationID" -> the id of the DENM sender to coorelate 
@@ -74,10 +77,11 @@ class OBU(threading.Thread):
         result = self.client.publish("vanetza/in/denm", repr(msg))
         status = result[0]
 
-        if status == 0:
-            print("OBU_"+str(self.id)+": sent DENM msg to topic vanetza/in/denm")
-        else:
-            print("OBU_"+str(self.id)+": failed to send DENM message to topic vanetza/in/denm")
+        # DEBUG ONLY
+        # if status == 0:
+        #     print("OBU_"+str(self.id)+": sent DENM msg to topic vanetza/in/denm")
+        # else:
+        #     print("OBU_"+str(self.id)+": failed to send DENM message to topic vanetza/in/denm")
 
     # Method to publish the CPM messages
     # TODO ALL THIS CLASS IS FUTURE WORK !!!!!!!!!!!!!!!!!!!!
@@ -121,22 +125,20 @@ class OBU(threading.Thread):
     def getJson(self, msg):
         # If it's a DENM msg
         if("fields" in msg):
-            data = { msg["stationID"] : {
-                        "latitude": msg["fields"]["denm"]["management"]["eventPosition"]["latitude"],
-                        "longitude": msg["fields"]["denm"]["management"]["eventPosition"]["longitude"],
-                        "causeCode": msg["fields"]["denm"]["situation"]["eventType"]["causeCode"],
-                        "subCauseCode": msg["fields"]["denm"]["situation"]["eventType"]["subCauseCode"],
-                        }
-                }
+            data = { "stationID": msg["stationID"],
+                     "latitude": msg["fields"]["denm"]["management"]["eventPosition"]["latitude"],
+                     "longitude": msg["fields"]["denm"]["management"]["eventPosition"]["longitude"],
+                     "causeCode": msg["fields"]["denm"]["situation"]["eventType"]["causeCode"],
+                     "subCauseCode": msg["fields"]["denm"]["situation"]["eventType"]["subCauseCode"],
+                   }
             self.denm_queue.append(data)
         # If it's a CAM msg
         else:
-            data = { msg["stationID"] : {
-                        "latitude": msg["latitude"],
-                        "longitude": msg["longitude"],
-                        "speed": msg["speed"]
-                        }
-                }
+            data = { "stationID": msg["stationID"],
+                     "latitude": msg["latitude"],
+                     "longitude": msg["longitude"],
+                     "speed": msg["speed"]
+                   }
             self.cam_queue.append(data)
 
     # To pop the first item of the CAM msgs queue
