@@ -2,7 +2,9 @@
 #          Martim Neves NMEC: 88904
 
 import paho.mqtt.client as mqttClient
-import string, threading, json
+import string, threading, json, geopy
+import geopy.distance
+from time import sleep
 from script.msg.cam import *
 from script.msg.cpm import *
 from script.msg.denm import *
@@ -28,14 +30,14 @@ class OBU(threading.Thread):
         
     # Method to connect to MQTT
     def connect_mqtt(self):
-        def on_connect(client, userdata, flags, rc):
-            if rc == 0:
-                print("OBU_"+str(self.id)+": is connected to MQTT Broker!")
-            else:
-                print("OBU_"+str(self.id)+": failed to connect, return code %d\n", rc)
+        # def on_connect(client, userdata, flags, rc):
+        #     if rc == 0:
+        #         print("OBU_"+str(self.id)+": is connected to MQTT Broker!")
+        #     else:
+        #         print("OBU_"+str(self.id)+": failed to connect, return code %d\n", rc)
 
         client = mqttClient.Client("OBU_"+str(self.id))
-        client.on_connect = on_connect
+        # client.on_connect = on_connect
         client.connect(self.ip)
         return client
 
@@ -160,5 +162,5 @@ class OBU(threading.Thread):
         self.client.loop_forever()
 
     # To always mantain the subscribe method runing on the background
-    def run(self):  
+    def run(self): 
         self.subscribe()

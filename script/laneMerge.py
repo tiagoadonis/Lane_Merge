@@ -4,7 +4,7 @@
 from time import sleep
 from obu import *
 from rsu import *
-import geopy, threading, math
+import geopy, threading
 import geopy.distance
 
 # Global variables
@@ -68,14 +68,14 @@ if __name__ == '__main__':
     obu_1.start()
     obu_2.start()
     rsu_1.start()
-    
+
     i = 0
     while True:
         # TODO
         # OBUs can send CAM msgs untill 10 Hz 
         # RSUs only send CAM msgs at 1Hz frequency
 
-        print("--------------------------------------------------------------------------")
+        print("---------------------------------------------------------------------------------------------")
         if (i < 7):
             pos_obu_1 = geopy.distance.geodesic(meters = delta_dist*i).destination(start_obu_1, 222)
             # print("["+str(pos_obu_1.latitude)+", "+str(pos_obu_1.longitude)+"],")
@@ -84,7 +84,7 @@ if __name__ == '__main__':
             # print("["+str(pos_obu_1.latitude)+", "+str(pos_obu_1.longitude)+"],")
 
         obu_1.publish_CAM([pos_obu_1.latitude, pos_obu_1.longitude, speed[1]])
-        
+
         # TODO - DENM msgs with a causeCode without a subCauseCode have the subCauseCode 
         #        equals to the causeCode 
 
@@ -93,12 +93,12 @@ if __name__ == '__main__':
 
         obu_2.publish_CAM([pos_obu_2.latitude, pos_obu_2.longitude, speed[3]])
 
-        #rsu_1.publish_CAM([rsu_coords[0], rsu_coords[1], 0])
+        # rsu_1.publish_CAM([rsu_coords[0], rsu_coords[1], 0])
 
         # To get the CAM and DENM msgs received by all the OBUs
         for num in range(0, len(OBUs)):
             if(len(OBUs[num].cam_queue) > 0):
-                # print("OBU_"+str(OBUs[num].id)+" CAM received: "+str(OBUs[num].cam_queue[0]))
+                print("OBU_"+str(OBUs[num].id)+" CAM received: "+str(OBUs[num].cam_queue[0]))
                 OBUs[num].popItemInCamQueue()
 
             if(len(OBUs[num].denm_queue) > 0):
@@ -134,5 +134,5 @@ if __name__ == '__main__':
             print("RSU_"+str(rsu_1.id)+" DENM received: "+str(rsu_1.denm_queue[0]))
             rsu_1.popItemInDenmQueue()
 
-        sleep(1)
+        sleep(0.1)
         i+=1

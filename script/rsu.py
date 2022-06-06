@@ -27,14 +27,14 @@ class RSU(threading.Thread):
 
     # Method to connect to MQTT
     def connect_mqtt(self):
-        def on_connect(client, userdata, flags, rc):
-            if rc == 0:
-                print("RSU_"+str(self.id)+": is connected to MQTT Broker!")
-            else:
-                print("RSU_"+str(self.id)+": failed to connect, return code %d\n", rc)
+        # def on_connect(client, userdata, flags, rc):
+        #     if rc == 0:
+        #         print("RSU_"+str(self.id)+": is connected to MQTT Broker!")
+        #     else:
+        #         print("RSU_"+str(self.id)+": failed to connect, return code %d\n", rc)
 
         client = mqttClient.Client("RSU_"+str(self.id))
-        client.on_connect = on_connect
+        # client.on_connect = on_connect
         client.connect(self.ip)
         return client
 
@@ -119,5 +119,5 @@ class RSU(threading.Thread):
         self.client.loop_forever()
 
     # To always mantain the subscribe method runing on the background
-    def run(self):
+    def run(self): 
         self.subscribe()
