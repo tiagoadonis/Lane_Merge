@@ -1,4 +1,3 @@
-To not generate the '\_\_pycache\_\_' directory after run an python script, do the following command on
-your ubuntu terminal inside the 'script' and 'script/test' directory:
+When running the project for the first time, you need to setup it by doing the following command on the root directory:
 
-`export PYTHONDONTWRITEBYTECODE=1`
+`sudo python3 setup install`
