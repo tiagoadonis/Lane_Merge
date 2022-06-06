@@ -2,9 +2,7 @@
 #          Martim Neves NMEC: 88904
 
 import paho.mqtt.client as mqttClient
-import string, threading, json, geopy
-import geopy.distance
-from time import sleep
+import string, threading, json
 from script.msg.cam import *
 from script.msg.cpm import *
 from script.msg.denm import *
@@ -13,16 +11,21 @@ from script.msg.denm import *
 class OBU(threading.Thread):
     ip: string
     id: int
+    start_pos: list
+    speed: int
+    actual_pos: list
     stationType: int
     cam_queue: list
     denm_queue: list
     client: mqttClient
 
     # The OBU constructor
-    def __init__(self, ip: string, id: int):
+    def __init__(self, ip: string, id: int, start_pos: list, speed: int):
         super(OBU, self).__init__()
         self.ip = ip
         self.id = id
+        self.start_pos = start_pos
+        self.speed = speed
         self.stationType = 5                    # OBUs are all station type = 5
         self.cam_queue = []
         self.denm_queue = []
@@ -85,44 +88,6 @@ class OBU(threading.Thread):
         # else:
         #     print("OBU_"+str(self.id)+": failed to send DENM message to topic vanetza/in/denm")
 
-    # Method to publish the CPM messages
-    # TODO ALL THIS CLASS IS FUTURE WORK !!!!!!!!!!!!!!!!!!!!
-    # TODO check this variables fields -> which ones are variable which are not
-    # TODO -> i put the altitude at 8m because it's Aveiro's altitude value
-    # data -> list with the variable information
-    # data[0]: latitude;
-    # data[1]: longitude;
-    # data[2]: speed; TODO -> is the speed of the OBU or the speed of others OBU detected?
-    # def publish_CPM(self, data: list):
-    #     # TODO -> what are this sensors?
-    #     sensors = [SensorInformationContainer(1, 1, DetectionArea(StationarySensorRectangle(750, 20, 3601))), 
-    #                SensorInformationContainer(2, 12, DetectionArea(None, StationarySensorRadial(100, 3601, 3601)))]
-
-    #     # TODO -> what we do with this objects
-    #     objects = [PerceivedObjectContainer(1, 0, 0, Axis(1216.281028098143, 1), 
-    #                Axis(1216.281028098143, 1), Axis(11.273405440822678, 1), 
-    #                Axis(7.9592920392978215, 1), XAcceleration(-0.0011505823066771444, 0),
-    #                YAcceleration(-0.000812338440426394, 0), 0, [Classification(0, Class(Vehicle(3, 0)))]), 
-                
-    #                PerceivedObjectContainer(4, 0, 0, Axis(1216.281028098143, 1),
-    #                Axis(1216.281028098143, 1), Axis(-0.5581092564671636, 1),
-    #                Axis(-0.7060552795962012, 1), XAcceleration(-0.0, 0),
-    #                YAcceleration(-0.0, 0), 0, [Classification(0, Class(None, Other(0, 0)))])]
-
-    #     msg = CPM(44258, CpmParameters(ManagementContainer(self.stationType, 
-    #               ReferencePosition(data[0], data[1], 
-    #               PositionConfidenceEllipse_CPM(4095, 4095, 0.0), Altitude_CPM(8, 14))), 
-    #               StationDataContainer(OriginatingVehicleContainer(Heading(3601, 127), 
-    #               Speed(data[2], 127), 0,)), list(sensors), list(objects), len(objects)))
-
-    #     result = self.client.publish("vanetza/in/cpm", repr(msg))
-    #     status = result[0]
-
-    #     if status == 0:
-    #         print("OBU_"+str(self.id)+": sent CPM msg to topic vanetza/in/cpm")
-    #     else:
-    #         print("OBU_"+str(self.id)+": failed to send CPM message to topic vanetza/in/cpm")
-
     # Gets an Json object from the mesg received in the subscribe method 
     def getJson(self, msg):
         # If it's a DENM msg
@@ -164,3 +129,14 @@ class OBU(threading.Thread):
     # To always mantain the subscribe method runing on the background
     def run(self): 
         self.subscribe()
+
+    # To update the actual positions coordinates
+    def updatePos(self, actual_pos):
+        self.actual_pos = actual_pos
+        # print("OBU_"+str(self.id)+" is on: "+str(self.actual_pos))
+
+    # Developer-friendly string representation of the object
+    def obu_status(self):
+        repr = {"actual_pos": self.actual_pos,
+                "speed": self.speed}
+        return repr

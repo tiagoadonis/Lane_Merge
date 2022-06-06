@@ -10,16 +10,18 @@ from script.msg.denm import *
 class RSU(threading.Thread):
     ip: string
     id: int
+    rsu_coords: list
     stationType : int
     cam_queue: list
     denm_queue: list
     client: mqttClient
 
     # The RSU constructor
-    def __init__(self, ip: string, id: int):
+    def __init__(self, ip: string, id: int, rsu_coords: list):
         super(RSU, self).__init__()
         self.ip = ip
         self.id = id
+        self.rsu_coords = rsu_coords
         self.stationType = 15                    # RSUs are all station type = 15
         self.cam_queue = []
         self.denm_queue = []
@@ -53,10 +55,13 @@ class RSU(threading.Thread):
         result = self.client.publish("vanetza/in/cam", repr(msg))
         status = result[0]
 
+        # DEBUG ONLY
         if status == 0:
-            print("RSU_"+str(self.id)+": sent CAM msg to topic vanetza/in/cam")
-        else:
-            print("RSU_"+str(self.id)+": failed to send CAM message to topic vanetza/in/cam")
+            # print("RSU_"+str(self.id)+": sent CAM msg to topic vanetza/in/cam")
+            print("RSU_"+str(self.id)+": Latitude: "+str(data[0])+
+                  ", Longitude: "+str(data[1])+", Speed: "+str(data[2]))
+        # else:
+        #     print("RSU_"+str(self.id)+": failed to send CAM message to topic vanetza/in/cam")
 
     # Method to publish the DENM messages
     #
