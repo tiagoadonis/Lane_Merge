@@ -8,7 +8,7 @@ lane_merge = LaneMerge()
 
 @app.route("/")
 def home():
-    # 100ms refresh rate
+    # 1000ms refresh rate
     refresh_rate = 1000
 
     lane_merge_thread = threading.Thread(target = lane_merge.run)

@@ -135,13 +135,13 @@
 
                 function updateCoordinates() {
                     $.get('/update_map', {}, function (data) {
-                        // console.log("INSIDE update coordinates")
-                        // console.log(data)
-                        // console.log(data.OBU_1.actual_pos[0]+", "+data.OBU_1.actual_pos[1])
-                        // console.log(data.OBU_2.actual_pos[0]+", "+data.OBU_2.actual_pos[1])
-
+                        // Update markers
                         obu_1.setPosition(new google.maps.LatLng(data.OBU_1.actual_pos[0], data.OBU_1.actual_pos[1]));
                         obu_2.setPosition(new google.maps.LatLng(data.OBU_2.actual_pos[0], data.OBU_2.actual_pos[1]));
+
+                        // Update Speed 
+                        document.getElementById('obu_1').innerText = data.OBU_1.speed + " km/h";
+                        document.getElementById('obu_2').innerText = data.OBU_2.speed + " km/h";
                     });
                 }
             }
@@ -172,7 +172,7 @@
                 <h3>OBU_1</h3>
                 <div class="info">
                     <p>
-                        <i class="fa-solid fa-gauge-high"></i> {{obu1_speed}}km/h &emsp;
+                        <i class="fa-solid fa-gauge-high"></i> <span id="obu_1"> </span> &emsp;
                         <i class="fa-solid fa-car-side"></i> Merging 
                     </p>
                 </div>
@@ -182,7 +182,7 @@
                 <h3>OBU_2</h3>
                 <div class="info">
                     <p>
-                        <i class="fa-solid fa-gauge-high"></i> 110km/h &emsp; 
+                        <i class="fa-solid fa-gauge-high"></i> <span id="obu_2"> </span> &emsp; 
                         <i class="fa-solid fa-car-side"></i> Changing Position
                     </p>
                 </div>
