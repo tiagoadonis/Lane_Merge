@@ -62,7 +62,7 @@ class RSU(threading.Thread):
     def publish_CAM(self, data: list):
         msg = CAM(True, 0, 8, 15, True, True, True, 1023, "FORWARD", True, False, 3601, 127, self.truncate(data[0], 7), 100,
                   self.truncate(data[1], 7), 4095, 3601, 4095, SpecialVehicle(PublicTransportContainer(False)), data[2],
-                  127, True, self.id, self.stationType, 30, 0)
+                  127, True, self.id, self.stationType, 10, 0)
 
         result = self.client.publish("vanetza/in/cam", repr(msg))
         status = result[0]
@@ -136,17 +136,9 @@ class RSU(threading.Thread):
 
         # There's a vehicle approaching the merge point
         if((appr_merge_coords[0] == unfactor_coords[0]) and (appr_merge_coords[1] == unfactor_coords[1])):
-            print("OBU_"+str(data["stationID"])+" is approaching the merge point")
+            print("RSU_"+str(self.id)+": warns OBU_"+str(data["stationID"])+" that he's approaching the merge point")
             self.publish_DENM([unfactor_coords[0], unfactor_coords[1], 
                                causeCodes["Approaching Merge"], causeCodes["Approaching Merge"]])
-
-    # To pop the first item of the CAM msgs queue
-    def popItemInCamQueue(self,):
-        self.cam_queue.pop(0)
-    
-    # To pop the first item of the DENM msgs queue
-    def popItemInDenmQueue(self):
-        self.denm_queue.pop(0)
 
     # Gets the message received on the subscribes topics
     def get_sub_msg(self, client, userdata, msg):

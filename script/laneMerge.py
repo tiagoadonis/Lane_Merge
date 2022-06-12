@@ -1,8 +1,8 @@
 # Authors: Tiago Dias   NMEC: 88896
 #          Martim Neves NMEC: 88904
 
-from obu import *
-from rsu import *
+from script.obu import OBU
+from script.rsu import RSU
 import threading
 import geopy.distance
 

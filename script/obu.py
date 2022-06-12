@@ -31,6 +31,11 @@ class OBU(threading.Thread):
     done: bool
     stationType: int
     client: mqttClient
+    wants_to_merge: bool
+    tot_obus: int
+    obus_not_blocking: int
+    first_iteraction: bool
+    merging: bool
 
     # The OBU constructor
     def __init__(self, ip: string, id: int, start_pos: list, speed: int):
@@ -42,6 +47,11 @@ class OBU(threading.Thread):
         self.done = False
         self.stationType = 5                    # OBUs are all station type = 5
         self.client = self.connect_mqtt()
+        self.wants_to_merge = False
+        self.tot_obus = 0
+        self.obus_not_blocking = 0
+        self.first_iteraction = True
+        self.merging = False
         
     # Method to connect to MQTT
     def connect_mqtt(self):
@@ -65,7 +75,7 @@ class OBU(threading.Thread):
     def publish_CAM(self, data: list):
         msg = CAM(True, 0, 8, 15, True, True, True, 1023, "FORWARD", True, False, 3601, 127, self.truncate(data[0], 7), 100,
                   self.truncate(data[1], 7), 4095, 3601, 4095, SpecialVehicle(PublicTransportContainer(False)), 
-                  data[2], 127, True, self.id, self.stationType, 30, 0)
+                  data[2], 127, True, self.id, self.stationType, 4, 0)
 
         result = self.client.publish("vanetza/in/cam", repr(msg))
         status = result[0]
@@ -95,8 +105,10 @@ class OBU(threading.Thread):
         status = result[0]
 
         # DEBUG ONLY
-        # if status == 0:
-        #     print("OBU_"+str(self.id)+": sent DENM msg to topic vanetza/in/denm")
+        if status == 0:
+        #   print("OBU_"+str(self.id)+": sent DENM msg to topic vanetza/in/denm")
+            print("OBU_"+str(self.id)+" DENM: Latitude: "+str(self.truncate(data[0], 7))+", Longitude: "
+                  +str(self.truncate(data[1], 7))+", CauseCode: "+str(data[2])+", SubCauseCode: "+str(data[3]))
         # else:
         #     print("OBU_"+str(self.id)+": failed to send DENM message to topic vanetza/in/denm")
 
@@ -111,7 +123,8 @@ class OBU(threading.Thread):
                      "subCauseCode": msg["fields"]["denm"]["situation"]["eventType"]["subCauseCode"],
                    }
             print("OBU_"+str(self.id)+" received DENM: "+str(data))
-            self.denm_queue.append(data)
+            self.processEvents(data)
+
         # If it's a CAM msg
         else:
             data = { "stationID": msg["stationID"],
@@ -120,15 +133,23 @@ class OBU(threading.Thread):
                      "speed": msg["speed"]
                    }
             print("OBU_"+str(self.id)+" received CAM: "+str(data))
-            self.cam_queue.append(data)
-            
-    # To pop the first item of the CAM msgs queue
-    def popItemInCamQueue(self):
-        self.cam_queue.pop(0)
-    
-    # To pop the first item of the DENM msgs queue
-    def popItemInDenmQueue(self):
-        self.denm_queue.pop(0)
+
+            # To know how many OBUs exist on the highway
+            if(self.first_iteraction):
+                if(data["speed"] > 0):
+                    self.tot_obus+=1
+
+            # Check if it's posible to merge
+            if(self.wants_to_merge):
+                # print("Tot OBUS: "+str(self.tot_obus))
+                self.checkIfNextLaneIsClear(data)
+                # The merge is approved, the OBU is going to merge
+                if(self.tot_obus == self.obus_not_blocking):
+                    print("OBU_"+str(self.id)+" MERGE APPROVED")
+                    self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                        causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
+                    self.speed = speed_values[2]
+                    self.merging = True
 
     # Gets the message received on the subscribes topics
     def get_sub_msg(self, client, userdata, msg):
@@ -151,6 +172,9 @@ class OBU(threading.Thread):
 
         i = 0
         while not self.done:
+            if (i > 0):
+                self.first_iteraction = False
+
             # If it's the OBU that starts runing on the merge lane of the highway
             if(self.id == 1):
                 if (i < 7):
@@ -159,6 +183,18 @@ class OBU(threading.Thread):
                 else:
                     pos = geopy.distance.geodesic(meters = delta_dist*i).destination(start, 223)
                     # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
+
+                # Adjust the direction when merging
+                if(self.merging):
+                    pos = geopy.distance.geodesic(meters = delta_dist*i).destination(start, 223)
+                    # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
+                    if(i >= 11 and i < 17):
+                        pos = geopy.distance.geodesic(meters = (delta_dist*i)).destination(start, 221.3)
+                        # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
+                    elif(i >= 17):
+                        pos = geopy.distance.geodesic(meters = (delta_dist*i)).destination(start, 221.7)
+                        # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
+
             # If the OBU starts on the main lane of the highway
             else:
                 pos = geopy.distance.geodesic(meters = delta_dist*i).destination(start, 225)
@@ -178,7 +214,7 @@ class OBU(threading.Thread):
     # To update the actual positions coordinates
     def updatePos(self, actual_pos):
         self.actual_pos = actual_pos
-        print("OBU_"+str(self.id)+" is on: "+str(self.actual_pos))
+        # print("OBU_"+str(self.id)+" is on: "+str(self.actual_pos))
 
     # Developer-friendly string representation of the object
     def obu_status(self):
@@ -189,3 +225,41 @@ class OBU(threading.Thread):
     # To truncate an number with the number of decimals passed as argument
     def truncate(self, num, dec_plc):
         return int(num * 10**dec_plc) / 10**dec_plc
+
+    # To unfactor the coordinates
+    def unfactorCoords(self, coords):
+        return [coords[0]/(10**7), coords[1]/(10**7)]
+
+    # Processes the events received by the DENM messages
+    def processEvents(self, data):
+        unfactor_coords = self.unfactorCoords([data["latitude"], data["longitude"]])
+
+        # If an OBU is approaching the merge point
+        if(data["causeCode"] == causeCodes["Approaching Merge"]):
+            if( (unfactor_coords[0] == self.actual_pos[0])  and (unfactor_coords[1] == self.actual_pos[1]) ):
+                print("OBU_"+str(self.id)+": i'm approaching an merge point")
+
+                # The OBU sends an DENM message with his merge intention
+                print("OBU_"+str(self.id)+" wants to merge")
+                self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                    causeCodes["Merge situation"], subCauseCodes["Wants to merge"]] )
+
+                self.wants_to_merge = True
+            
+        # The OBU receives the intention of merge by another OBU
+        if((data["causeCode"] == causeCodes["Merge situation"]) and (data["subCauseCode"] == subCauseCodes["Wants to merge"])):
+            print("OBU_"+str(self.id)+": knows that the OBU_"+str(data["stationID"])+" wants to merge")
+
+    # Helps the merging OBU to know if the next lane is clear or not
+    def checkIfNextLaneIsClear(self, data):
+        # Calculate only if it's a OBU
+        if(data["speed"] > 0):
+            actual_pos_point = geopy.Point(self.actual_pos[0], self.actual_pos[1])
+            pos_clear = geopy.distance.geodesic(meters = 4).destination(actual_pos_point, 160)
+
+            truncated_coord = [self.truncate(pos_clear.latitude, 7), self.truncate(pos_clear.longitude, 7)]
+            unfact_coord = self.unfactorCoords([data["latitude"], data["longitude"]])   
+
+            # Check if the near position on the highway is clear
+            if( (truncated_coord[0] != unfact_coord[0]) and (truncated_coord[1] != unfact_coord[1]) ): 
+                self.obus_not_blocking+=1
