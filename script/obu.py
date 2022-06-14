@@ -149,6 +149,13 @@ class OBU(threading.Thread):
                     print("OBU_"+str(self.id)+" MERGE APPROVED")
                     self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                         causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
+
+                    # The others OBUs maintain the speed
+                    if(data["stationID"] != self.id):
+                        unfactor_coords = self.unfactorCoords([data["latitude"], data["longitude"]])
+                        self.publish_DENM( [unfactor_coords[0], unfactor_coords[1], 
+                                        causeCodes["Mantain speed"], causeCodes["Mantain speed"]] )
+
                     self.speed = speed_values[2]
                     self.merging = True
                     self.wants_to_merge = False
@@ -173,7 +180,6 @@ class OBU(threading.Thread):
         start = geopy.Point(self.start_pos[0], self.start_pos[1])
 
         i = 0
-        # TODO send mantain speed DENM msg to the others OBUs
         while not self.done:
             if (i > 0):
                 self.first_iteraction = False
