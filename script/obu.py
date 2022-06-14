@@ -1,6 +1,7 @@
 # Authors: Tiago Dias   NMEC: 88896
 #          Martim Neves NMEC: 88904
 
+from ctypes.wintypes import PINT
 import paho.mqtt.client as mqttClient
 import string, threading, json, geopy
 from script.msg.cam import *
@@ -12,7 +13,7 @@ from time import sleep
 speed_values = [60, 80, 100, 120, 140]
 
 # Delta distance - the default move distance that a OBU mades 
-delta_dist = 5
+delta_dist = 0.05
 
 # DENM "causeCodes" and "subCauseCodes"
 causeCodes = {"Approaching Merge": 31, "Merge situation": 32, "Change position": 33, 
@@ -150,6 +151,7 @@ class OBU(threading.Thread):
                                         causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
                     self.speed = speed_values[2]
                     self.merging = True
+                    self.wants_to_merge = False
 
     # Gets the message received on the subscribes topics
     def get_sub_msg(self, client, userdata, msg):
@@ -171,6 +173,7 @@ class OBU(threading.Thread):
         start = geopy.Point(self.start_pos[0], self.start_pos[1])
 
         i = 0
+        # TODO send mantain speed DENM msg to the others OBUs
         while not self.done:
             if (i > 0):
                 self.first_iteraction = False
@@ -178,28 +181,37 @@ class OBU(threading.Thread):
             # If it's the OBU that starts runing on the merge lane of the highway
             if(self.id == 1):
                 if (i < 7):
-                    pos = geopy.distance.geodesic(meters = delta_dist*i).destination(start, 222)
+                    pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 222)
                     # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
                 else:
-                    pos = geopy.distance.geodesic(meters = delta_dist*i).destination(start, 223)
+                    pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 223)
                     # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
 
                 # Adjust the direction when merging
                 if(self.merging):
-                    pos = geopy.distance.geodesic(meters = delta_dist*i).destination(start, 223)
+                    pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 223)
                     # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
-                    if(i >= 11 and i < 17):
-                        pos = geopy.distance.geodesic(meters = (delta_dist*i)).destination(start, 221.3)
-                        # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
-                    elif(i >= 17):
-                        pos = geopy.distance.geodesic(meters = (delta_dist*i)).destination(start, 221.7)
-                        # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
+                    if(i == 11):
+                        pos = geopy.distance.geodesic(meters = (self.speed-10)*delta_dist*i).destination(start, 221.3)   
+                        self.publish_DENM( [pos.latitude, pos.longitude, 
+                                    causeCodes["Merge situation"], subCauseCodes["Merge done"]] )                     
+                    if(i >= 12 and i < 17):
+                        pos = geopy.distance.geodesic(meters = (self.speed-5)*delta_dist*i).destination(start, 221.3)
+                        if (i == 13):
+                            self.publish_DENM( [pos.latitude, pos.longitude, 
+                                    causeCodes["Merge situation"], subCauseCodes["Merge done"]] )      
+                    elif(i >= 17 and i <= 19):
+                        pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 221.7)
 
             # If the OBU starts on the main lane of the highway
             else:
-                pos = geopy.distance.geodesic(meters = delta_dist*i).destination(start, 225)
+                pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 225)
                 # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
             
+            # END of case 1
+            if(i == 19):
+                self.done = True
+
             # Publish the CAM msg
             self.publish_CAM([pos.latitude, pos.longitude, self.speed])
             self.updatePos([self.truncate(pos.latitude, 7), self.truncate(pos.longitude, 7)])

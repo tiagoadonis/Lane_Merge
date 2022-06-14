@@ -8,10 +8,10 @@ from script.msg.denm import *
 from time import sleep
 
 # Merge Location
-merge_coords = [40.6402746, -8.6634728]
+merge_coords = [40.6402812, -8.6634647]
 
 # Delta distance - the default move distance that a OBU mades 
-delta_dist = 5
+delta_dist = 0.05
 
 # DENM "causeCodes" and "subCauseCodes"
 causeCodes = {"Approaching Merge": 31, "Merge situation": 32, "Change position": 33, 
@@ -130,14 +130,14 @@ class RSU(threading.Thread):
 
         # Last position before the merge point (merge_point - delta_dist)
         approaching_merge = geopy.Point(merge_coords[0], merge_coords[1])
-        merge_dist = geopy.distance.geodesic(meters = -delta_dist).destination(approaching_merge, 223)
+        merge_dist = geopy.distance.geodesic(meters = -data["speed"]*delta_dist).destination(approaching_merge, 223)
         appr_merge_coords = [self.truncate(merge_dist.latitude, 7), self.truncate(merge_dist.longitude, 7)]
         # print("Approaching merge coords: "+str(appr_merge_coords))
 
         # There's a vehicle approaching the merge point
         if((appr_merge_coords[0] == unfactor_coords[0]) and (appr_merge_coords[1] == unfactor_coords[1])):
             print("RSU_"+str(self.id)+": warns OBU_"+str(data["stationID"])+" that he's approaching the merge point")
-            self.publish_DENM([unfactor_coords[0], unfactor_coords[1], 
+            self.publish_DENM([(unfactor_coords[0]), unfactor_coords[1], 
                                causeCodes["Approaching Merge"], causeCodes["Approaching Merge"]])
 
     # Gets the message received on the subscribes topics
