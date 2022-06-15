@@ -31,7 +31,7 @@ class RSU(threading.Thread):
 
     # The RSU constructor
     def __init__(self, ip: string, id: int, rsu_coords: list):
-        super(RSU, self).__init__()
+        threading.Thread.__init__(self)
         self.ip = ip
         self.id = id
         self.rsu_coords = rsu_coords
@@ -41,14 +41,7 @@ class RSU(threading.Thread):
 
     # Method to connect to MQTT
     def connect_mqtt(self):
-        # def on_connect(client, userdata, flags, rc):
-        #     if rc == 0:
-        #         print("RSU_"+str(self.id)+": is connected to MQTT Broker!")
-        #     else:
-        #         print("RSU_"+str(self.id)+": failed to connect, return code %d\n", rc)
-
         client = mqttClient.Client("RSU_"+str(self.id))
-        # client.on_connect = on_connect
         client.connect(self.ip)
         return client
 
@@ -69,11 +62,8 @@ class RSU(threading.Thread):
 
         # DEBUG ONLY
         if status == 0:
-            # print("RSU_"+str(self.id)+": sent CAM msg to topic vanetza/in/cam")
             print("RSU_"+str(self.id)+" CAM: Latitude: "+str(self.truncate(data[0], 7))+
                   ", Longitude: "+str(self.truncate(data[1], 7))+", Speed: "+str(data[2]))
-        # else:
-        #     print("RSU_"+str(self.id)+": failed to send CAM message to topic vanetza/in/cam")
 
     # Method to publish the DENM messages
     #
@@ -94,11 +84,8 @@ class RSU(threading.Thread):
 
         # DEBUG ONLY
         if status == 0:
-            # print("RSU"+str(self.id)+": sent DENM msg to topic vanetza/in/denm")
             print("RSU_"+str(self.id)+" DENM: Latitude: "+str(self.truncate(data[0], 7))+", Longitude: "
                   +str(self.truncate(data[1], 7))+", CauseCode: "+str(data[2])+", SubCauseCode: "+str(data[3]))
-        # else:
-        #     print("RSU_"+str(self.id)+": failed to send DENM message to topic vanetza/in/denm")
 
      # Gets an Json object from the mesg received in the subscribe method 
     def getJson(self, msg):
@@ -146,7 +133,7 @@ class RSU(threading.Thread):
         self.getJson(json.loads(msg.payload.decode()))
 
      # The routine of the RSU - "main" method of this class
-    def start(self):
+    def start(self):        
         # Connect to the MQTT
         self.client = mqttClient.Client("RSUU_"+str(self.id))
         self.client.connect(self.ip)
@@ -156,6 +143,7 @@ class RSU(threading.Thread):
         self.client.loop_start()
         self.client.subscribe([("vanetza/out/cam", 0), ("vanetza/out/denm", 1)])
         
+        # TODO -> work with this done, find a way to stop the iteraction
         while not self.done:
             # Publish the CAM msg
             self.publish_CAM([self.rsu_coords[0], self.rsu_coords[1], 0])
@@ -169,3 +157,13 @@ class RSU(threading.Thread):
     # To truncate an number with the number of decimals passed as argument
     def truncate(self, num, dec_plc):
         return int(num * 10**dec_plc) / 10**dec_plc
+
+    # Used to stop the simulation
+    def stop(self):
+        self.done = True
+
+    # To reset to the initial state
+    def reset(self):
+        self.done = False
+        self.client.loop_stop()
+        self.client.disconnect()

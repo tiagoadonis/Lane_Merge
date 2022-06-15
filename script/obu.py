@@ -1,7 +1,6 @@
 # Authors: Tiago Dias   NMEC: 88896
 #          Martim Neves NMEC: 88904
 
-from ctypes.wintypes import PINT
 import paho.mqtt.client as mqttClient
 import string, threading, json, geopy
 from script.msg.cam import *
@@ -27,6 +26,7 @@ class OBU(threading.Thread):
     ip: string
     id: int
     start_pos: list
+    initial_speed: int
     speed: int
     actual_pos: list
     done: bool
@@ -40,10 +40,11 @@ class OBU(threading.Thread):
 
     # The OBU constructor
     def __init__(self, ip: string, id: int, start_pos: list, speed: int):
-        super(OBU, self).__init__()
+        threading.Thread.__init__(self)
         self.ip = ip
         self.id = id
         self.start_pos = start_pos
+        self.initial_speed = speed
         self.speed = speed
         self.done = False
         self.stationType = 5                    # OBUs are all station type = 5
@@ -53,17 +54,10 @@ class OBU(threading.Thread):
         self.obus_not_blocking = 0
         self.first_iteraction = True
         self.merging = False
-        
+
     # Method to connect to MQTT
     def connect_mqtt(self):
-        # def on_connect(client, userdata, flags, rc):
-        #     if rc == 0:
-        #         print("OBU_"+str(self.id)+": is connected to MQTT Broker!")
-        #     else:
-        #         print("OBU_"+str(self.id)+": failed to connect, return code %d\n", rc)
-
         client = mqttClient.Client("OBU_"+str(self.id))
-        # client.on_connect = on_connect
         client.connect(self.ip)
         return client
 
@@ -83,11 +77,8 @@ class OBU(threading.Thread):
 
         # DEBUG ONLY
         if status == 0:
-            # print("OBU_"+str(self.id)+": sent CAM msg to topic vanetza/in/cam")
             print("OBU_"+str(self.id)+" CAM: Latitude: "+str(self.truncate(data[0], 7))+
                   ", Longitude: "+str(self.truncate(data[1], 7))+", Speed: "+str(data[2]))
-        # else:
-        #     print("OBU_"+str(self.id)+": failed to send CAM message to topic vanetza/in/cam")
 
     # Method to publish the DENM messages
     # TODO Future Work: the field "originatingStationID" -> the id of the DENM sender to coorelate 
@@ -107,11 +98,8 @@ class OBU(threading.Thread):
 
         # DEBUG ONLY
         if status == 0:
-        #   print("OBU_"+str(self.id)+": sent DENM msg to topic vanetza/in/denm")
             print("OBU_"+str(self.id)+" DENM: Latitude: "+str(self.truncate(data[0], 7))+", Longitude: "
                   +str(self.truncate(data[1], 7))+", CauseCode: "+str(data[2])+", SubCauseCode: "+str(data[3]))
-        # else:
-        #     print("OBU_"+str(self.id)+": failed to send DENM message to topic vanetza/in/denm")
 
     # Gets an Json object from the mesg received in the subscribe method 
     def getJson(self, msg):
@@ -281,3 +269,15 @@ class OBU(threading.Thread):
             # Check if the near position on the highway is clear
             if( (truncated_coord[0] != unfact_coord[0]) and (truncated_coord[1] != unfact_coord[1]) ): 
                 self.obus_not_blocking+=1
+
+    # To reset to the initial state
+    def reset(self):
+        self.actual_pos = self.start_pos
+        self.speed = self.initial_speed
+        self.done = False
+        self.client.loop_stop()
+        self.client.disconnect()
+
+    # Used to stop the simulation
+    def stop(self):
+        self.done = True
