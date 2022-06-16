@@ -259,6 +259,7 @@ class OBU(threading.Thread):
     # Helps the merging OBU to know if the next lane is clear or not
     def checkIfNextLaneIsClear(self, data):
         # Calculate only if it's a OBU
+        # TODO -> check this block of code, is not detecting the other OBU 
         if(data["speed"] > 0):
             actual_pos_point = geopy.Point(self.actual_pos[0], self.actual_pos[1])
             pos_clear = geopy.distance.geodesic(meters = 4).destination(actual_pos_point, 160)

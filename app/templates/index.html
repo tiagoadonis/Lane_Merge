@@ -71,7 +71,7 @@
                 // OBU 2
                 var start_obu_2 = JSON.parse('{{obu_2_start_pos}}');
 
-                const obu_2 = new google.maps.Marker({
+                var obu_2 = new google.maps.Marker({
                     position: new google.maps.LatLng(start_obu_2[0], start_obu_2[1]),
                     map: map,
                     icon: {
@@ -92,13 +92,34 @@
                 setInterval(updateCoordinates, JSON.parse('{{refresh_rate}}'))
                 function updateCoordinates() {
                     $.get('/update_map', {}, function (data) {
-                        // Update markers
-                        obu_1.setPosition(new google.maps.LatLng(data.OBU_1.actual_pos[0], data.OBU_1.actual_pos[1]));
-                        obu_2.setPosition(new google.maps.LatLng(data.OBU_2.actual_pos[0], data.OBU_2.actual_pos[1]));
-
-                        // Update Speed 
-                        document.getElementById('obu_1').innerText = data.OBU_1.speed + " km/h";
-                        document.getElementById('obu_2').innerText = data.OBU_2.speed + " km/h";
+                        for(i = 0; i < OBUs.length; i++){
+                            obu = OBUs[i];
+                            // OBU 1
+                            if(i == 0){
+                                obu.setPosition(new google.maps.LatLng(data.OBU_1.actual_pos[0], data.OBU_1.actual_pos[1]));
+                                document.getElementById('obu_1').innerText = data.OBU_1.speed + " km/h";
+                            }
+                            // OBU 2
+                            else if(i == 1){
+                                obu.setPosition(new google.maps.LatLng(data.OBU_2.actual_pos[0], data.OBU_2.actual_pos[1]));
+                                document.getElementById('obu_2').innerText = data.OBU_2.speed + " km/h";
+                            }
+                            // OBU 3
+                            else if(i == 2){
+                                obu.setPosition(new google.maps.LatLng(data.OBU_3.actual_pos[0], data.OBU_3.actual_pos[1]));
+                                document.getElementById('obu_3').innerText = data.OBU_3.speed + " km/h";
+                            }
+                            // OBU 4
+                            else if(i == 3){
+                                obu.setPosition(new google.maps.LatLng(data.OBU_4.actual_pos[0], data.OBU_4.actual_pos[1]));
+                                document.getElementById('obu_4').innerText = data.OBU_4.speed + " km/h";
+                            }
+                            // OBU 5
+                            else if(i == 4){
+                                obu.setPosition(new google.maps.LatLng(data.OBU_5.actual_pos[0], data.OBU_5.actual_pos[1]));
+                                document.getElementById('obu_5').innerText = data.OBU_5.speed + " km/h";
+                            }
+                        }
                     });
                 }
             }
@@ -229,7 +250,7 @@
                 <h3>OBU_1</h3>
                 <div class="info">
                     <p>
-                        <i class="fa-solid fa-gauge-high"></i> <span id="obu_1"> </span> &emsp;
+                        <i class="fa-solid fa-gauge-high"></i> <span id="obu_1"> -- km/h </span> &emsp;
                         <i class="fa-solid fa-car-side"></i> Merging 
                     </p>
                 </div>
@@ -239,7 +260,7 @@
                 <h3>OBU_2</h3>
                 <div class="info">
                     <p>
-                        <i class="fa-solid fa-gauge-high"></i> <span id="obu_2"> </span> &emsp; 
+                        <i class="fa-solid fa-gauge-high"></i> <span id="obu_2"> -- km/h </span> &emsp; 
                         <i class="fa-solid fa-car-side"></i> Changing Position
                     </p>
                 </div>
@@ -249,7 +270,7 @@
                 <h3>OBU_3</h3>
                 <div class="info">
                     <p>
-                        <i class="fa-solid fa-gauge-high"></i> 100km/h &emsp;
+                        <i class="fa-solid fa-gauge-high"></i> <span id="obu_3"> -- km/h </span> &emsp;
                         <i class="fa-solid fa-car-side"></i> Driving
                     </p>
                 </div>
@@ -259,7 +280,7 @@
                 <h3>OBU_4</h3>
                 <div class="info">
                     <p>
-                        <i class="fa-solid fa-gauge-high"></i> 90km/h &emsp;
+                        <i class="fa-solid fa-gauge-high"></i> <span id="obu_4"> -- km/h </span> &emsp;
                         <i class="fa-solid fa-car-side"></i> Driving
                     </p>
                 </div>
@@ -269,7 +290,7 @@
                 <h3>OBU_5</h3>
                 <div class="info">
                     <p>
-                        <i class="fa-solid fa-gauge-high"></i> 120km/h &emsp;
+                        <i class="fa-solid fa-gauge-high"></i> <span id="obu_5"> -- km/h </span> &emsp;
                         <i class="fa-solid fa-car-side"></i> Changing Position
                     </p>
                 </div>

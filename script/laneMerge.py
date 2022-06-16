@@ -27,7 +27,7 @@ obu_2_start = [40.640615, -8.662906]
 # Coordinates of OBU_3's first position
 obu_3_start = [40.640633, -8.662941]
 
-# The cooordinates bellow are only for test
+# TODO ->The cooordinates bellow are only for test
 # Coordinates of OBU_3's first position
 obu_4_start = [40.640422, -8.663217]
 
@@ -47,6 +47,9 @@ class LaneMerge(threading.Thread):
         obu_1 = OBU(obu_1_ip, 1, obu_1_start, 80)
         obu_2 = OBU(obu_2_ip, 2, obu_2_start, 120)
 
+        # TODO -> only to test the laneMerge.py alone without web app
+        obu_3 = OBU(obu_3_ip, 3, obu_3_start, 120)
+
         # Create the RSU
         self.rsu = RSU(rsu_ip, 0, rsu_coords)
         
@@ -54,6 +57,8 @@ class LaneMerge(threading.Thread):
         self.OBUs = []
         self.OBUs.append(obu_1)
         self.OBUs.append(obu_2)
+        # TODO -> only to test the laneMerge.py alone without web app
+        self.OBUs.append(obu_3)
 
     # The method to run the threads of every OBU and RSU
     def run(self):
@@ -63,10 +68,12 @@ class LaneMerge(threading.Thread):
 
         # Create and start the OBUs threads
         self.OBUs_threads = []
+        print("----------------------------------------------------------------------------------")
         for i in range(0, len(self.OBUs)):
             obu_thread = threading.Thread(target = self.OBUs[i].start)
             self.OBUs_threads.append(obu_thread)
             obu_thread.start()
+            print("GOING TO START THE THREAD OF OBU"+str(self.OBUs[i].id))
 
     # Update the number of OBUs
     def updateNumOfObus(self, numObus):
