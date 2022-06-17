@@ -46,8 +46,6 @@ class RSU(threading.Thread):
         return client
 
     # Method to publish the CAM messages at a 1Hz frequency
-    # TODO -> we can use the vanetza CAM periodically messages at 1Hz frequency
-    # TODO Future Work: the fields "acceleration", "brakePedal" and "gasPedal" could be variables
     # data -> list with the variables data 
     # data[0]: latitude;
     # data[1]: longitude;
@@ -66,9 +64,6 @@ class RSU(threading.Thread):
                   ", Longitude: "+str(self.truncate(data[1], 7))+", Speed: "+str(data[2]))
 
     # Method to publish the DENM messages
-    #
-    # TODO Future Work: the field "originatingStationID" -> the id of the DENM sender to coorelate 
-    #      with the "stationID" field of the CAM messages 
     # data -> list with the variables data 
     # data[0]: latitude;
     # data[1]: longitude;
@@ -87,10 +82,14 @@ class RSU(threading.Thread):
             print("RSU_"+str(self.id)+" DENM: Latitude: "+str(self.truncate(data[0], 7))+", Longitude: "
                   +str(self.truncate(data[1], 7))+", CauseCode: "+str(data[2])+", SubCauseCode: "+str(data[3]))
 
-     # Gets an Json object from the mesg received in the subscribe method 
-    def getJson(self, msg):
+    # Gets the message received on the subscribes topics
+    def get_sub_msg(self, client, userdata, msg):
+        # print("OBU_"+str(self.id)+": received "+msg.payload.decode())
+        msg_type = msg.topic
+        msg = json.loads(msg.payload.decode())
+
         # If it's a DENM msg
-        if("fields" in msg):
+        if(msg_type == "vanetza/out/denm"):
             data = { "stationID": msg["stationID"],
                      "latitude": msg["fields"]["denm"]["management"]["eventPosition"]["latitude"],
                      "longitude": msg["fields"]["denm"]["management"]["eventPosition"]["longitude"],
@@ -100,7 +99,7 @@ class RSU(threading.Thread):
             print("RSU_"+str(self.id)+" received DENM: "+str(data))
 
         # If it's a CAM msg
-        else:
+        elif(msg_type == "vanetza/out/cam"):
             data = { "stationID": msg["stationID"],
                      "latitude": msg["latitude"],
                      "longitude": msg["longitude"],
@@ -108,29 +107,6 @@ class RSU(threading.Thread):
                    }
             print("RSU_"+str(self.id)+" received CAM: "+str(data))
             self.approachingMergePoint(data)
-
-    # Check if there's a vehicle approaching the merge point
-    def approachingMergePoint(self, data):
-        # Unfactor the coordinates received
-        unfactor_coords = [data["latitude"]/(10**7), data["longitude"]/(10**7)]
-        # print("UNFACTOR COORDS: "+str(unfactor_coords))
-
-        # Last position before the merge point (merge_point - delta_dist)
-        approaching_merge = geopy.Point(merge_coords[0], merge_coords[1])
-        merge_dist = geopy.distance.geodesic(meters = -data["speed"]*delta_dist).destination(approaching_merge, 223)
-        appr_merge_coords = [self.truncate(merge_dist.latitude, 7), self.truncate(merge_dist.longitude, 7)]
-        # print("Approaching merge coords: "+str(appr_merge_coords))
-
-        # There's a vehicle approaching the merge point
-        if((appr_merge_coords[0] == unfactor_coords[0]) and (appr_merge_coords[1] == unfactor_coords[1])):
-            print("RSU_"+str(self.id)+": warns OBU_"+str(data["stationID"])+" that he's approaching the merge point")
-            self.publish_DENM([(unfactor_coords[0]), unfactor_coords[1], 
-                               causeCodes["Approaching Merge"], causeCodes["Approaching Merge"]])
-
-    # Gets the message received on the subscribes topics
-    def get_sub_msg(self, client, userdata, msg):
-        # print("OBU_"+str(self.id)+": received "+msg.payload.decode())
-        self.getJson(json.loads(msg.payload.decode()))
 
      # The routine of the RSU - "main" method of this class
     def start(self):        
@@ -153,6 +129,24 @@ class RSU(threading.Thread):
         
         self.client.loop_stop()
         self.client.disconnect()
+
+    # Check if there's a vehicle approaching the merge point
+    def approachingMergePoint(self, data):
+        # Unfactor the coordinates received
+        unfactor_coords = [data["latitude"]/(10**7), data["longitude"]/(10**7)]
+        # print("UNFACTOR COORDS: "+str(unfactor_coords))
+
+        # Last position before the merge point (merge_point - delta_dist)
+        approaching_merge = geopy.Point(merge_coords[0], merge_coords[1])
+        merge_dist = geopy.distance.geodesic(meters = -data["speed"]*delta_dist).destination(approaching_merge, 223)
+        appr_merge_coords = [self.truncate(merge_dist.latitude, 7), self.truncate(merge_dist.longitude, 7)]
+        # print("Approaching merge coords: "+str(appr_merge_coords))
+
+        # There's a vehicle approaching the merge point
+        if((appr_merge_coords[0] == unfactor_coords[0]) and (appr_merge_coords[1] == unfactor_coords[1])):
+            print("RSU_"+str(self.id)+": warns OBU_"+str(data["stationID"])+" that he's approaching the merge point")
+            self.publish_DENM([(unfactor_coords[0]), unfactor_coords[1], 
+                               causeCodes["Approaching Merge"], causeCodes["Approaching Merge"]])
 
     # To truncate an number with the number of decimals passed as argument
     def truncate(self, num, dec_plc):

@@ -48,7 +48,7 @@ class LaneMerge(threading.Thread):
         obu_2 = OBU(obu_2_ip, 2, obu_2_start, 120)
 
         # TODO -> only to test the laneMerge.py alone without web app
-        obu_3 = OBU(obu_3_ip, 3, obu_3_start, 120)
+        # obu_3 = OBU(obu_3_ip, 3, obu_3_start, 120)
 
         # Create the RSU
         self.rsu = RSU(rsu_ip, 0, rsu_coords)
@@ -58,7 +58,7 @@ class LaneMerge(threading.Thread):
         self.OBUs.append(obu_1)
         self.OBUs.append(obu_2)
         # TODO -> only to test the laneMerge.py alone without web app
-        self.OBUs.append(obu_3)
+        # self.OBUs.append(obu_3)
 
     # The method to run the threads of every OBU and RSU
     def run(self):
