@@ -36,7 +36,7 @@ class OBU(threading.Thread):
     client: mqttClient
     wants_to_merge: bool
     tot_obus: int
-    first_iteraction: bool
+    second_iteraction: bool
     merging: bool
     lane_clear_2: bool
     lane_clear_3: bool
@@ -56,7 +56,7 @@ class OBU(threading.Thread):
         self.client = self.connect_mqtt()
         self.wants_to_merge = False
         self.tot_obus = 0
-        self.first_iteraction = True
+        self.second_iteraction = False
         self.merging = False
         self.lane_clear_2 = False
         self.lane_clear_3 = False
@@ -134,7 +134,7 @@ class OBU(threading.Thread):
             print("OBU_"+str(self.id)+" received CAM: "+str(data))
 
             # To know how many OBUs exist on the highway
-            if(self.first_iteraction):
+            if(self.second_iteraction):
                 if(data["speed"] > 0):
                     self.tot_obus+=1
 
@@ -159,8 +159,10 @@ class OBU(threading.Thread):
         i = 0
         j = 0
         while not self.done:
-            if (i > 0):
-                self.first_iteraction = False
+            if (i == 1):
+                self.second_iteraction = True
+            if(i > 1):
+                self.second_iteraction = False
 
             # If it's the OBU that starts runing on the merge lane of the highway
             if(self.id == 1):
@@ -443,6 +445,11 @@ class OBU(threading.Thread):
         self.actual_pos = self.start_pos
         self.speed = self.initial_speed
         self.done = False
+        # self.lane_clear_2 = False
+        # self.lane_clear_3 = False
+        # self.lane_clear = False
+        self.tot_obus = 0
+        self.blocking_obu_id = -1
         self.client.loop_stop()
         self.client.disconnect()
 
