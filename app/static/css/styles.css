@@ -125,6 +125,32 @@ body {
     pointer-events: none;
 }
 
+.swal-button {
+    border-radius: 2px;
+    background-color: #00a09e;
+    color: white;
+    font-size: 15px;
+}
+
+.swal-text {
+    margin-top: 10px;
+    text-align: center;
+}
+
+.swal-title {
+    font-size: 26px;
+    margin-bottom: 28px;
+}
+
+.swal-modal {
+    border: 3px solid rgb(134, 134, 134);
+    border-radius: 15px;
+}
+
+.swal-overlay {
+    background-color: rgba(230, 230, 230, 0.45);
+  }
+
 .footer {
     text-align: center;
     background-color: rgb(192, 192, 192);
