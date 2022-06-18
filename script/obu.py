@@ -59,6 +59,7 @@ class OBU(threading.Thread):
         self.lane_clear_3 = False
         self.lane_clear = False
         self.blocking_obu_id = -1
+        self.reducing = False  
 
     # Method to connect to MQTT
     def connect_mqtt(self):
@@ -153,6 +154,7 @@ class OBU(threading.Thread):
         start = geopy.Point(self.start_pos[0], self.start_pos[1])
 
         i = 0
+        j = 0
         while not self.done:
             if (i > 0):
                 self.first_iteraction = False
@@ -170,25 +172,36 @@ class OBU(threading.Thread):
                 if(self.merging):
                     pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 223)
                     # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
-                    if(i == 11):
-                        pos = geopy.distance.geodesic(meters = (self.speed-10)*delta_dist*i).destination(start, 221.3)   
-                        # self.publish_DENM( [pos.latitude, pos.longitude, 
-                        #                     causeCodes["Merge situation"], subCauseCodes["Merge done"]] )                     
-                    if(i >= 12 and i < 17):
-                        pos = geopy.distance.geodesic(meters = (self.speed-5)*delta_dist*i).destination(start, 221.3)
+                    if(i == 12):
+                        pos = geopy.distance.geodesic(meters = (self.speed)*delta_dist*i).destination(start, 221.3)                
+                    if(i >= 13 and i < 17):
+                        pos = geopy.distance.geodesic(meters = (self.speed)*delta_dist*i).destination(start, 221.3)
                         if (i == 13):
                             self.publish_DENM( [pos.latitude, pos.longitude, 
                                             causeCodes["Merge situation"], subCauseCodes["Merge done"]] )      
-                    elif(i >= 17 and i <= 19):
+                    elif(i >= 17 and i <= 20):
                         pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 221.7)
 
             # If the OBU starts on the main lane of the highway
             else:
-                pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 225)
-                # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
-            
-            # END of case 1
-            if(i == 19):
+                if(self.reducing):
+                    if(j == 0):
+                        print("REDUCING FIRST----------------------------------------------------------------------")
+                        pos = geopy.distance.geodesic(meters = (self.speed+15)*delta_dist*i).destination(start, 225)
+                    elif(j == 1):
+                        print("REDUCING SECOND----------------------------------------------------------------------")
+                        pos = geopy.distance.geodesic(meters = (self.speed+10)*delta_dist*i).destination(start, 225)  
+                    elif(j == 2):
+                        print("REDUCING THIRD----------------------------------------------------------------------")
+                        pos = geopy.distance.geodesic(meters = (self.speed+5)*delta_dist*i).destination(start, 225)  
+                        self.reducing = False  
+                    j+=1
+                else:
+                    pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 225)
+                    # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
+                
+            # End of simulation
+            if(i == 20):
                 self.merging = False
                 self.done = True
 
@@ -230,7 +243,7 @@ class OBU(threading.Thread):
                 self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                         causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
                 self.merging = True
-
+                print("OBU_"+str(self.id)+" i'm gonna increase my speed")
                 self.increaseSpeed()
 
             # If the lane on the right side of the merge OBU is blocked
@@ -242,7 +255,9 @@ class OBU(threading.Thread):
                     
                         self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                             causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
+                        self.reducing = True
                         self.reduceSpeed()
+                        print("OBU_"+str(self.id)+" i'm gonna reduce my speed")
 
                         print("OBU_"+str(self.id)+" merge approved")
                         self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
@@ -272,9 +287,10 @@ class OBU(threading.Thread):
                 print("OBU_"+str(self.id)+" i'm on the way")
 
                 # Creates an random option to do the merge situation 
-                # TODO -> print the option that he's taking
-                option = random.randint(0, 1)
-                print("GOING TO CHOSE OPTION: "+str(option)+"-----------------------------")
+                # TODO -> change this force situation -> put it random
+                # option = random.randint(0, 1)
+                option = 1
+                print("GOING TO CHOSE OPTION: "+str(option))
 
                 # 0) I'm gonna mantain my speed -> The merge OBU needs to reduce his speed
                 if (option == 0):
@@ -285,6 +301,8 @@ class OBU(threading.Thread):
                 elif (option == 1):
                     self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                         causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
+                    print("OBU_"+str(self.id)+" i'm gonna reduce my speed")
+                    self.reducing = True
                     self.reduceSpeed()
 
             # If this OBU is not on the way of the merge OBU
