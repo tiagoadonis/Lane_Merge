@@ -436,6 +436,8 @@ class OBU(threading.Thread):
     def unfactorCoords(self, coords):
         return [coords[0]/(10**7), coords[1]/(10**7)]
 
+    # TODO -> if the simulation begun with 2 OBUs and then i add one OBU the simulation with 3 OBUs doesn't detect
+    # the 3rd OBU (LANE IS CLEAR: OBU_3)
     # To reset to the initial state
     def reset(self):
         self.actual_pos = self.start_pos

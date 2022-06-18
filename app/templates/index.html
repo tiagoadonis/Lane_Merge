@@ -11,13 +11,11 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
         <script src="https://kit.fontawesome.com/e347a7d6fb.js" crossorigin="anonymous"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script> 
-        <script src="{{ url_for('static', filename='js/startButtonPressed.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/stopButtonPressed.js') }}"></script>   
-        <script src="{{ url_for('static', filename='js/resetButtonPressed.js') }}"></script>   
+        <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
         
         <script>
             var OBUs = []
-
+           
             function initMap() {
                 map = new google.maps.Map(document.getElementById("map"), {
                     zoom: 20,
@@ -123,115 +121,157 @@
                     });
                 }
             }
+            
+            var onGoing = false;
+            var stop = 0;
+            function updateMap(sub){  
+                if(onGoing == true){
+                    swal({
+                        title: "Lane Merge",
+                        text: "To change the OBUs number of the simulation press first the stop button an then the reset button!",
+                        icon: "warning",
+                    });
+                }         
+                else{
+                    var num = document.getElementById('num').innerText;
+                    
+                    if(num == 2 && sub == -1){
+                        tot_obus = 2;
+                    }
+                    else if(num == 5 && sub == 1){
+                        tot_obus = 5;
+                    }
+                    else{
+                        tot_obus = parseInt(num) + parseInt(sub);
+                    }
 
-            function updateMap(sub){                
-                var num = document.getElementById('num').innerText;
+                    // Some OBUs are added
+                    if(OBUs.length < tot_obus){
+                        // Going to add OBU 3
+                        if(OBUs.length == 2){
+                            const obu_3 = new google.maps.Marker({
+                                position: new google.maps.LatLng(40.640633, -8.662941),
+                                map: map,
+                                icon: {
+                                    url: "static/vehicle_2.png",
+                                    scaledSize: new google.maps.Size(50, 50)
+                                },
+                                title: "OBU_3",
+                            });
+            
+                            obu_3.addListener("click", () => {
+                                infoWindow.close();
+                                infoWindow.setContent(obu_3.getTitle());
+                                infoWindow.open(obu_3.getMap(), obu_3);
+                            });
+
+                            OBUs.push(obu_3);
+                            // console.log("There are: "+OBUs.length+" OBUs on the simulation")
+                            // console.log(OBUs)
+                        }
+                        // Going to add OBU 4
+                        else if(OBUs.length == 3){
+                            const obu_4 = new google.maps.Marker({
+                                position: new google.maps.LatLng(40.640422, -8.663217),
+                                map: map,
+                                icon: {
+                                    url: "static/vehicle_3.png",
+                                    scaledSize: new google.maps.Size(50, 50)
+                                },
+                                title: "OBU_4",
+                            });
+                        
+                            obu_4.addListener("click", () => {
+                                infoWindow.close();
+                                infoWindow.setContent(obu_4.getTitle());
+                                infoWindow.open(obu_4.getMap(), obu_4);
+                            });
+
+                            OBUs.push(obu_4);
+                            // console.log("There are: "+OBUs.length+" OBUs on the simulation")
+                            // console.log(OBUs)
+                        }
+                        // Going to add OBU 5
+                        else if(OBUs.length == 4){
+                            const obu_5 = new google.maps.Marker({
+                                position: new google.maps.LatLng(40.640093, -8.663590),
+                                map: map,
+                                icon: {
+                                    url: "static/vehicle_1.png",
+                                    scaledSize: new google.maps.Size(50, 50)
+                                },
+                                title: "OBU_5",
+                            });
+                        
+                            obu_5.addListener("click", () => {
+                                infoWindow.close();
+                                infoWindow.setContent(obu_5.getTitle());
+                                infoWindow.open(obu_5.getMap(), obu_5);
+                            });
+
+                            OBUs.push(obu_5);
+                            // console.log("There are: "+OBUs.length+" OBUs on the simulation")
+                            // console.log(OBUs)
+                        }
+                    }
+                    // Some OBUs are deleted
+                    else if(OBUs.length > tot_obus){                    
+                        // Going to delete OBU 3
+                        if(OBUs.length == 3){
+                            OBUs[OBUs.length-1].setMap(null)
+                            OBUs.pop();
+                            // console.log("There are: "+OBUs.length+" OBUs on the simulation")
+                            // console.log(OBUs)
+                        }
+                        // Going to delete OBU 4
+                        else if(OBUs.length == 4){
+                            OBUs[OBUs.length-1].setMap(null)
+                            OBUs.pop();
+                            // console.log("There are: "+OBUs.length+" OBUs on the simulation")
+                            // console.log(OBUs)
+                        }
+                        // Going to delete OBU 5
+                        else if(OBUs.length == 5){
+                            OBUs[OBUs.length-1].setMap(null)
+                            OBUs.pop();
+                            // console.log("There are: "+OBUs.length+" OBUs on the simulation")
+                            // console.log(OBUs)
+                        }
+                    }
                 
-                if(num == 2 && sub == -1){
-                    tot_obus = 2;
+                    $.post('/update_num_obus', {"msg": OBUs.length});
                 }
-                else if(num == 5 && sub == 1){
-                    tot_obus = 5;
+            }
+
+            var count = 0;
+
+            function startPressed() {
+                var data = "Start Pressed";
+                count++; 
+                $.post('/update_start_state', {"msg": data, "count": count});
+                onGoing = true;
+            }
+
+            function stopPressed() {
+                var data = "Stop Pressed";
+                $.post('/update_start_state', {"msg": data});
+                stop = 1;
+            }
+
+            function resetPressed() {
+                var data = "Reset Pressed";
+                if(stop == 1){
+                    $.post('/update_start_state', {"msg": data});
+                    stop = 0;
+                    onGoing = false;
                 }
                 else{
-                    tot_obus = parseInt(num) + parseInt(sub);
+                    swal({
+                        title: "Lane Merge",
+                        text: "To reset the simulation press first the stop button!",
+                        icon: "warning",
+                    });
                 }
-
-                // Some OBUs are added
-                if(OBUs.length < tot_obus){
-                    // Going to add OBU 3
-                    if(OBUs.length == 2){
-                        const obu_3 = new google.maps.Marker({
-                            position: new google.maps.LatLng(40.640633, -8.662941),
-                            map: map,
-                            icon: {
-                                url: "static/vehicle_2.png",
-                                scaledSize: new google.maps.Size(50, 50)
-                            },
-                            title: "OBU_3",
-                        });
-        
-                        obu_3.addListener("click", () => {
-                            infoWindow.close();
-                            infoWindow.setContent(obu_3.getTitle());
-                            infoWindow.open(obu_3.getMap(), obu_3);
-                        });
-
-                        OBUs.push(obu_3);
-                        // console.log("There are: "+OBUs.length+" OBUs on the simulation")
-                        // console.log(OBUs)
-                    }
-                    // Going to add OBU 4
-                    else if(OBUs.length == 3){
-                        const obu_4 = new google.maps.Marker({
-                            position: new google.maps.LatLng(40.640422, -8.663217),
-                            map: map,
-                            icon: {
-                                url: "static/vehicle_3.png",
-                                scaledSize: new google.maps.Size(50, 50)
-                            },
-                            title: "OBU_4",
-                        });
-                    
-                        obu_4.addListener("click", () => {
-                            infoWindow.close();
-                            infoWindow.setContent(obu_4.getTitle());
-                            infoWindow.open(obu_4.getMap(), obu_4);
-                        });
-
-                        OBUs.push(obu_4);
-                        // console.log("There are: "+OBUs.length+" OBUs on the simulation")
-                        // console.log(OBUs)
-                    }
-                    // Going to add OBU 5
-                    else if(OBUs.length == 4){
-                        const obu_5 = new google.maps.Marker({
-                            position: new google.maps.LatLng(40.640093, -8.663590),
-                            map: map,
-                            icon: {
-                                url: "static/vehicle_1.png",
-                                scaledSize: new google.maps.Size(50, 50)
-                            },
-                            title: "OBU_5",
-                        });
-                    
-                        obu_5.addListener("click", () => {
-                            infoWindow.close();
-                            infoWindow.setContent(obu_5.getTitle());
-                            infoWindow.open(obu_5.getMap(), obu_5);
-                        });
-
-                        OBUs.push(obu_5);
-                        // console.log("There are: "+OBUs.length+" OBUs on the simulation")
-                        // console.log(OBUs)
-                    }
-                }
-                // Some OBUs are deleted
-                else if(OBUs.length > tot_obus){                    
-                    // Going to delete OBU 3
-                    if(OBUs.length == 3){
-                        OBUs[OBUs.length-1].setMap(null)
-                        OBUs.pop();
-                        // console.log("There are: "+OBUs.length+" OBUs on the simulation")
-                        // console.log(OBUs)
-                    }
-                    // Going to delete OBU 4
-                    else if(OBUs.length == 4){
-                        OBUs[OBUs.length-1].setMap(null)
-                        OBUs.pop();
-                        // console.log("There are: "+OBUs.length+" OBUs on the simulation")
-                        // console.log(OBUs)
-                    }
-                    // Going to delete OBU 5
-                    else if(OBUs.length == 5){
-                        OBUs[OBUs.length-1].setMap(null)
-                        OBUs.pop();
-                        // console.log("There are: "+OBUs.length+" OBUs on the simulation")
-                        // console.log(OBUs)
-                    }
-                }
-                
-                $.post('/update_num_obus', {"msg": OBUs.length});
             }
         </script>
     </head>
@@ -296,15 +336,16 @@
                 </div>
                 <hr>
 
-                <p style="text-align: center; margin-bottom: 0px"><b>Note:</b> To reset the simulation or to change the</p>
-                <p style="text-align: center; margin-top: 0px">number of OBUs press the stop first</p>
+                <p style="text-align: center; margin-bottom: 0px"><b>Notes:</b> To reset the simulation press first</p>
+                <p style="text-align: center; margin-top: 0px; margin-bottom: 0px"> the stop button.To change the number of OBUs</p>
+                <p style="text-align: center; margin-top: 0px">press the stop first and then the reset button.</p>
                 <div class="buttons"">
                     <button type="button" class="button" onclick="startPressed()">Start</button>
                     <button type="button" class="button" onclick="stopPressed()">Stop</button>
                     <button type="button" class="button" onclick="resetPressed()">Reset</button>
                 </div>
 
-                <h3>Number of OBUs</h3>
+                <h3 style="margin-top: 12px; margin-bottom: 5px">Number of OBUs</h3>
                 <div class="wrapper">
                     <span class="minus" id="minus" onclick="updateMap(-1)">-</span>
                     <span class="num" id="num"">2</span>
@@ -320,15 +361,19 @@
                     let a = 2;
 
                     plus.addEventListener("click", ()=>{
-                        if(a < 5){
-                            a++;
-                            num.innerText = a;
+                        if(onGoing == false){
+                            if(a < 5){
+                                a++;
+                                num.innerText = a;
+                            }
                         }
                     })
                     minus.addEventListener("click", ()=>{
-                        if(a > 2){
-                            a--;
-                            num.innerText = a;
+                        if(onGoing == false){
+                            if(a > 2){
+                                a--;
+                                num.innerText = a;
+                            }
                         }
                     })
                 </script>
