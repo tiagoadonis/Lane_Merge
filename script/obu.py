@@ -38,6 +38,10 @@ class OBU(threading.Thread):
     tot_obus: int
     first_iteraction: bool
     merging: bool
+    lane_clear_2: bool
+    lane_clear_3: bool
+    blocking_obu_id: int
+    reducing: bool  
 
     # The OBU constructor
     def __init__(self, ip: string, id: int, start_pos: list, speed: int):
@@ -54,7 +58,6 @@ class OBU(threading.Thread):
         self.tot_obus = 0
         self.first_iteraction = True
         self.merging = False
-
         self.lane_clear_2 = False
         self.lane_clear_3 = False
         self.lane_clear = False
@@ -170,31 +173,16 @@ class OBU(threading.Thread):
 
                 # Adjust the direction when merging
                 if(self.merging):
-                    pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 223)
-                    # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
-                    if(i == 12):
-                        pos = geopy.distance.geodesic(meters = (self.speed)*delta_dist*i).destination(start, 221.3)                
-                    if(i >= 13 and i < 17):
-                        pos = geopy.distance.geodesic(meters = (self.speed)*delta_dist*i).destination(start, 221.3)
-                        if (i == 13):
-                            self.publish_DENM( [pos.latitude, pos.longitude, 
-                                            causeCodes["Merge situation"], subCauseCodes["Merge done"]] )      
-                    elif(i >= 17 and i <= 20):
-                        pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 221.7)
+                    # if(self.reducing):
+                    #     #TODO
+                    #     pass
+                    # else:
+                    pos = self.mergingPos(start, i)
 
             # If the OBU starts on the main lane of the highway
             else:
                 if(self.reducing):
-                    if(j == 0):
-                        print("REDUCING FIRST----------------------------------------------------------------------")
-                        pos = geopy.distance.geodesic(meters = (self.speed+15)*delta_dist*i).destination(start, 225)
-                    elif(j == 1):
-                        print("REDUCING SECOND----------------------------------------------------------------------")
-                        pos = geopy.distance.geodesic(meters = (self.speed+10)*delta_dist*i).destination(start, 225)  
-                    elif(j == 2):
-                        print("REDUCING THIRD----------------------------------------------------------------------")
-                        pos = geopy.distance.geodesic(meters = (self.speed+5)*delta_dist*i).destination(start, 225)  
-                        self.reducing = False  
+                    pos = self.reducingSpeedPos(start, i, j)
                     j+=1
                 else:
                     pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 225)
@@ -257,7 +245,6 @@ class OBU(threading.Thread):
                                             causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
                         self.reducing = True
                         self.reduceSpeed()
-                        print("OBU_"+str(self.id)+" i'm gonna reduce my speed")
 
                         print("OBU_"+str(self.id)+" merge approved")
                         self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
@@ -301,7 +288,7 @@ class OBU(threading.Thread):
                 elif (option == 1):
                     self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                         causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
-                    print("OBU_"+str(self.id)+" i'm gonna reduce my speed")
+
                     self.reducing = True
                     self.reduceSpeed()
 
@@ -366,6 +353,34 @@ class OBU(threading.Thread):
         poly = Polygon(coords)
 
         return poly.contains(point)
+
+    # The interaction between the reducing speed event and the graphical position of the OBU 
+    def reducingSpeedPos(self, start, i, j):
+        if(j == 0):
+            pos = geopy.distance.geodesic(meters = (self.speed+15)*delta_dist*i).destination(start, 225)
+        elif(j == 1):
+            pos = geopy.distance.geodesic(meters = (self.speed+10)*delta_dist*i).destination(start, 225)  
+        elif(j == 2):
+            pos = geopy.distance.geodesic(meters = (self.speed+5)*delta_dist*i).destination(start, 225)  
+            self.reducing = False  
+
+        return pos
+
+    # The interaction between the merging event and the graphical position of the OBU 
+    def mergingPos(self, start, i):
+        pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 223)
+        # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
+        if(i == 12):
+            pos = geopy.distance.geodesic(meters = (self.speed)*delta_dist*i).destination(start, 221.3)                
+        if(i >= 13 and i < 17):
+            pos = geopy.distance.geodesic(meters = (self.speed)*delta_dist*i).destination(start, 221.3)
+            if (i == 13):
+                self.publish_DENM( [pos.latitude, pos.longitude, 
+                                causeCodes["Merge situation"], subCauseCodes["Merge done"]] )      
+        elif(i >= 17 and i <= 20):
+            pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 221.7)
+
+        return pos
 
     # Decreases the OBU speed
     def reduceSpeed(self):
