@@ -173,16 +173,16 @@ class OBU(threading.Thread):
 
                 # Adjust the direction when merging
                 if(self.merging):
-                    # if(self.reducing):
-                    #     #TODO
-                    #     pass
-                    # else:
-                    pos = self.mergingPos(start, i)
+                    if(self.reducing):
+                        pos = self.reducingToMergeSpeedPosMergeOBU(start, i, j)
+                        j+=1
+                    else:
+                        pos = self.mergingPos(start, i)
 
             # If the OBU starts on the main lane of the highway
             else:
                 if(self.reducing):
-                    pos = self.reducingSpeedPos(start, i, j)
+                    pos = self.reducingSpeedPosMainOBU(start, i, j)
                     j+=1
                 else:
                     pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 225)
@@ -191,6 +191,7 @@ class OBU(threading.Thread):
             # End of simulation
             if(i == 20):
                 self.merging = False
+                self.reducing = False
                 self.done = True
 
             # Publish the CAM msg
@@ -274,10 +275,8 @@ class OBU(threading.Thread):
                 print("OBU_"+str(self.id)+" i'm on the way")
 
                 # Creates an random option to do the merge situation 
-                # TODO -> change this force situation -> put it random
-                # option = random.randint(0, 1)
-                option = 1
-                print("GOING TO CHOSE OPTION: "+str(option))
+                option = random.randint(0, 1)
+                print("GOING TO CHOSE OPTION: "+str(option)+" --------------------")
 
                 # 0) I'm gonna mantain my speed -> The merge OBU needs to reduce his speed
                 if (option == 0):
@@ -317,7 +316,7 @@ class OBU(threading.Thread):
                 else:
                     self.lane_clear_2 = False
                     self.blocking_obu_id = 2
-                    print("ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+"------------------------------------")
+                    print("ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
             self.lane_clear = self.lane_clear_2
         elif(self.tot_obus == 2):
             if(data["stationID"] == 2):
@@ -327,7 +326,7 @@ class OBU(threading.Thread):
                 else:
                     self.lane_clear_2 = False
                     self.blocking_obu_id = 2
-                    print("ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+"------------------------------------")
+                    print("ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
             elif(data["stationID"] == 3):
                 if(poly.contains(point) == False):
                     self.lane_clear_3 = True
@@ -335,7 +334,7 @@ class OBU(threading.Thread):
                 else:
                     self.lane_clear_3 = False
                     self.blocking_obu_id = 3
-                    print("ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+"------------------------------------")
+                    print("ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
             self.lane_clear = self.lane_clear_2 and self.lane_clear_3
 
     # To check if the OBU is blocking the way of the merge OBU
@@ -354,8 +353,8 @@ class OBU(threading.Thread):
 
         return poly.contains(point)
 
-    # The interaction between the reducing speed event and the graphical position of the OBU 
-    def reducingSpeedPos(self, start, i, j):
+    # The interaction between the reducing speed event and the graphical position of the OBU on the main lane
+    def reducingSpeedPosMainOBU(self, start, i, j):
         if(j == 0):
             pos = geopy.distance.geodesic(meters = (self.speed+15)*delta_dist*i).destination(start, 225)
         elif(j == 1):
@@ -366,14 +365,32 @@ class OBU(threading.Thread):
 
         return pos
 
+    # The interaction between the reducing speed event and the graphical position of the OBU on the merge lane
+    def reducingToMergeSpeedPosMergeOBU(self, start, i, j):
+        if(j == 0):
+            pos = geopy.distance.geodesic(meters = (self.speed+25)*delta_dist*i).destination(start, 223)
+        elif(j == 1):
+            pos = geopy.distance.geodesic(meters = (self.speed+20)*delta_dist*i).destination(start, 223)  
+        elif(j >= 2 and j <= 4):
+            pos = geopy.distance.geodesic(meters = (self.speed+20)*delta_dist*i).destination(start, 221.3)  
+        elif(j == 5):
+            self.increaseSpeed()
+            pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 221.3)  
+        elif(j == 6):
+            self.increaseSpeed()
+            pos = geopy.distance.geodesic(meters = (self.speed-15)*delta_dist*i).destination(start, 221.3)
+        elif(j > 6):
+            pos = geopy.distance.geodesic(meters = (self.speed-10)*delta_dist*i).destination(start, 221.3) 
+
+        return pos
+
     # The interaction between the merging event and the graphical position of the OBU 
     def mergingPos(self, start, i):
         pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 223)
-        # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
         if(i == 12):
-            pos = geopy.distance.geodesic(meters = (self.speed)*delta_dist*i).destination(start, 221.3)                
+            pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 221.3)                
         if(i >= 13 and i < 17):
-            pos = geopy.distance.geodesic(meters = (self.speed)*delta_dist*i).destination(start, 221.3)
+            pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 221.3)
             if (i == 13):
                 self.publish_DENM( [pos.latitude, pos.longitude, 
                                 causeCodes["Merge situation"], subCauseCodes["Merge done"]] )      
