@@ -93,7 +93,7 @@ class OBU(threading.Thread):
 
         # DEBUG ONLY
         if status == 0:
-            print("OBU_"+str(self.id)+" CAM: Latitude: "+str(self.truncate(data[0], 7))+
+            print("OBU_"+str(self.id)+" sent CAM: Latitude: "+str(self.truncate(data[0], 7))+
                   ", Longitude: "+str(self.truncate(data[1], 7))+", Speed: "+str(data[2]))
 
     # Method to publish the DENM messages
@@ -112,7 +112,7 @@ class OBU(threading.Thread):
 
         # DEBUG ONLY
         if status == 0:
-            print("OBU_"+str(self.id)+" DENM: Latitude: "+str(self.truncate(data[0], 7))+", Longitude: "
+            print("OBU_"+str(self.id)+" sent DENM: Latitude: "+str(self.truncate(data[0], 7))+", Longitude: "
                   +str(self.truncate(data[1], 7))+", CauseCode: "+str(data[2])+", SubCauseCode: "+str(data[3]))
 
     # Gets the message received on the subscribes topics
@@ -168,10 +168,7 @@ class OBU(threading.Thread):
         # Create the start postion of the OBU
         start = geopy.Point(self.start_pos[0], self.start_pos[1])
 
-        i = 0
-        j = 0
-        k = 0
-        l = 0
+        i, j, k, l = 0, 0, 0, 0
         while not self.done:
             if (i == 1):
                 self.second_iteraction = True
@@ -218,6 +215,7 @@ class OBU(threading.Thread):
                 self.merging = False
                 self.reducing = 0
                 self.done = True
+                print("\x1b[0;37;41m"+"OBU_"+str(self.id)+": simulation done"+"\x1b[0m")
 
             # Publish the CAM msg
             self.publish_CAM([pos.latitude, pos.longitude, self.speed])
@@ -238,10 +236,10 @@ class OBU(threading.Thread):
         if(data["causeCode"] == causeCodes["Approaching Merge"]):
             # Processing the data from the OBU that is on the merge lane
             if( (unfactor_coords[0] == self.actual_pos[0])  and (unfactor_coords[1] == self.actual_pos[1]) ):
-                print("OBU_"+str(self.id)+": i'm approaching an merge point")
+                print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm approaching an merge point"+"\x1b[0m")
 
                 # The OBU sends an DENM message with his merge intention
-                print("OBU_"+str(self.id)+" wants to merge")
+                print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i want to merge"+"\x1b[0m")
                 self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                     causeCodes["Merge situation"], subCauseCodes["Wants to merge"]] )
 
@@ -253,11 +251,11 @@ class OBU(threading.Thread):
             if(self.lane_clear):
                 self.wants_to_merge = False
 
-                print("OBU_"+str(self.id)+" merge approved")
+                print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": merge approved!"+"\x1b[0m")
                 self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                         causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
                 self.merging = True
-                print("OBU_"+str(self.id)+" i'm gonna increase my speed")
+                print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna merge and increase my speed"+"\x1b[0m")
                 self.increaseSpeed()
 
             # If the lane on the right side of the merge OBU is blocked
@@ -293,7 +291,8 @@ class OBU(threading.Thread):
 
         # The OBU receives the intention of merge by another OBU
         if((data["causeCode"] == causeCodes["Merge situation"]) and (data["subCauseCode"] == subCauseCodes["Wants to merge"])):
-            print("OBU_"+str(self.id)+": knows that the OBU_"+str(data["stationID"])+" wants to merge")
+            print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": knows that the OBU_"
+                                        +str(data["stationID"])+" wants to merge"+"\x1b[0m")
 
             # Check if this OBU is on the near lane of the merge OBU
             if(self.checkIfImBlocking()):
@@ -324,7 +323,7 @@ class OBU(threading.Thread):
 
             # If this OBU is not on the way of the merge OBU
             else:
-                print("OBU_"+str(self.id)+" i'm not in the way of OBU_"+str(data["stationID"]))
+                print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna mantain my speed"+"\x1b[0m")
                 self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                     causeCodes["Mantain speed"], causeCodes["Mantain speed"]] )
 
@@ -362,10 +361,13 @@ class OBU(threading.Thread):
 
         if(data["stationID"] == 2):
             if(poly.contains(point) == False):
-                print("OBU_"+str(self.id)+" THE LANE IS CLEAR: OBU_"+str(data["stationID"])+" : "+str(unfactor_coords))
+                print("\x1b[0;37;42m"+"OBU_"+str(self.id)+
+                      ": i know that the second lane is clear for a merge situation (analysing OBU_"
+                      +str(data["stationID"])+" position)"+"\x1b[0m")
                 self.second_lane_clear = True
             else:
-                print("OBU_"+str(self.id)+" ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
+                print("\x1b[0;37;41m"+"OBU_"+str(self.id)+" ATTENTION: the second lane is not clear (analysing OBU_"
+                            +str(data["stationID"])+" position)"+"\x1b[0m")
                 self.second_lane_clear = False
 
     # To check if the lane on the right side of the merge OBU is clear
@@ -382,29 +384,38 @@ class OBU(threading.Thread):
             if(data["stationID"] == 2):
                 if(poly.contains(point) == False):
                     self.lane_clear_2 = True
-                    print("OBU_"+str(self.id)+" THE LANE IS CLEAR: OBU_"+str(data["stationID"])+" : "+str(unfactor_coords))
+                    print("\x1b[0;37;42m"+"OBU_"+str(self.id)+
+                          ": i know that the first lane is clear for a merge situation (analysing OBU_"
+                          +str(data["stationID"])+" position)"+"\x1b[0m")
                 else:
                     self.lane_clear_2 = False
                     self.blocking_obu_id = 2
-                    print("OBU_"+str(self.id)+" ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
+                    print("\x1b[0;37;41m"+"OBU_"+str(self.id)+" ATTENTION: the first lane is not clear (analysing OBU_"
+                                         +str(data["stationID"])+" position)"+"\x1b[0m")
             self.lane_clear = self.lane_clear_2
         elif(self.tot_obus == 2):
             if(data["stationID"] == 2):
                 if(poly.contains(point) == False):
                     self.lane_clear_2 = True
-                    print("OBU_"+str(self.id)+" THE LANE IS CLEAR: OBU_"+str(data["stationID"])+" : "+str(unfactor_coords))
+                    print("\x1b[0;37;42m"+"OBU_"+str(self.id)+
+                          ": i know that the first lane is clear for a merge situation (analysing OBU_"
+                          +str(data["stationID"])+" position)"+"\x1b[0m")
                 else:
                     self.lane_clear_2 = False
                     self.blocking_obu_id = 2
-                    print("OBU_"+str(self.id)+" ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
+                    print("\x1b[0;37;41m"+"OBU_"+str(self.id)+" ATTENTION: the first lane is not clear (analysing OBU_"
+                                         +str(data["stationID"])+" position)"+"\x1b[0m")
             elif(data["stationID"] == 3):
                 if(poly.contains(point) == False):
                     self.lane_clear_3 = True
-                    print("OBU_"+str(self.id)+" THE LANE IS CLEAR: OBU_"+str(data["stationID"])+" : "+str(unfactor_coords))
+                    print("\x1b[0;37;42m"+"OBU_"+str(self.id)+
+                          ": i know that the first lane is clear for a merge situation (analysing OBU_"
+                          +str(data["stationID"])+" position)"+"\x1b[0m")
                 else:
                     self.lane_clear_3 = False
                     self.blocking_obu_id = 3
-                    print("OBU_"+str(self.id)+" ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
+                    print("\x1b[0;37;41m"+"OBU_"+str(self.id)+" ATTENTION: the first lane is not clear (analysing OBU_"
+                                         +str(data["stationID"])+" position)"+"\x1b[0m")
             self.lane_clear = self.lane_clear_2 and self.lane_clear_3
 
     # To check if the OBU is blocking the way of the merge OBU
@@ -485,6 +496,7 @@ class OBU(threading.Thread):
             if (i == 13):
                 self.publish_DENM( [pos.latitude, pos.longitude, 
                                 causeCodes["Merge situation"], subCauseCodes["Merge done"]] )      
+                print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i finished my merge"+"\x1b[0m")
         elif(i >= 17 and i <= 20):
             pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 221.7)
 
@@ -511,7 +523,7 @@ class OBU(threading.Thread):
     # To update the actual positions coordinates
     def updatePos(self, actual_pos):
         self.actual_pos = actual_pos
-        print("OBU_"+str(self.id)+" is on: "+str(self.actual_pos))
+        # print("OBU_"+str(self.id)+" is on: "+str(self.actual_pos))
 
     # Developer-friendly string representation of the object
     def obu_status(self):

@@ -68,12 +68,12 @@ class LaneMerge(threading.Thread):
 
         # Create and start the OBUs threads
         self.OBUs_threads = []
-        print("----------------------------------------------------------------------------------")
+        print("\n------------------------------------------------- Start Simulation -------------------------------------------------\n")
         for i in range(0, len(self.OBUs)):
             obu_thread = threading.Thread(target = self.OBUs[i].start)
             self.OBUs_threads.append(obu_thread)
             obu_thread.start()
-            print("GOING TO START THE THREAD OF OBU"+str(self.OBUs[i].id))
+            # print("GOING TO START THE THREAD OF OBU"+str(self.OBUs[i].id))
 
     # Update the number of OBUs
     def updateNumOfObus(self, numObus):

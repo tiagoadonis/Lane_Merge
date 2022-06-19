@@ -60,7 +60,7 @@ class RSU(threading.Thread):
 
         # DEBUG ONLY
         if status == 0:
-            print("RSU_"+str(self.id)+" CAM: Latitude: "+str(self.truncate(data[0], 7))+
+            print("RSU_"+str(self.id)+" sent CAM: Latitude: "+str(self.truncate(data[0], 7))+
                   ", Longitude: "+str(self.truncate(data[1], 7))+", Speed: "+str(data[2]))
 
     # Method to publish the DENM messages
@@ -79,7 +79,7 @@ class RSU(threading.Thread):
 
         # DEBUG ONLY
         if status == 0:
-            print("RSU_"+str(self.id)+" DENM: Latitude: "+str(self.truncate(data[0], 7))+", Longitude: "
+            print("RSU_"+str(self.id)+" sent DENM: Latitude: "+str(self.truncate(data[0], 7))+", Longitude: "
                   +str(self.truncate(data[1], 7))+", CauseCode: "+str(data[2])+", SubCauseCode: "+str(data[3]))
 
     # Gets the message received on the subscribes topics
@@ -119,11 +119,16 @@ class RSU(threading.Thread):
         self.client.loop_start()
         self.client.subscribe([("vanetza/out/cam", 0), ("vanetza/out/denm", 1)])
         
-        # TODO -> work with this done, find a way to stop the iteraction
+        i = 0
         while not self.done:
             # Publish the CAM msg
             self.publish_CAM([self.rsu_coords[0], self.rsu_coords[1], 0])
 
+            if(i == 20):
+                self.done = True
+                print("\x1b[0;37;41m"+"RSU_"+str(self.id)+": simulation done"+"\x1b[0m")
+
+            i+=1
             # Send the CAMs at a 1Hz frequency
             sleep(1)
         
@@ -144,7 +149,9 @@ class RSU(threading.Thread):
 
         # There's a vehicle approaching the merge point
         if((appr_merge_coords[0] == unfactor_coords[0]) and (appr_merge_coords[1] == unfactor_coords[1])):
-            print("RSU_"+str(self.id)+": warns OBU_"+str(data["stationID"])+" that he's approaching the merge point")
+            print("\x1b[0;37;43m"+"RSU_"+str(self.id)+": warns OBU_"+str(data["stationID"])
+                                 +" that he's approaching the merge point"+"\x1b[0m")
+            
             self.publish_DENM([(unfactor_coords[0]), unfactor_coords[1], 
                                causeCodes["Approaching Merge"], causeCodes["Approaching Merge"]])
 
