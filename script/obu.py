@@ -265,12 +265,13 @@ class OBU(threading.Thread):
                     if(data["stationID"] == self.blocking_obu_id):
                         self.wants_to_merge = False
                     
+                        print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna reduce my speed"+"\x1b[0m")
                         self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                             causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
                         self.reducing = 1
                         self.reduceSpeed()
 
-                        print("OBU_"+str(self.id)+" merge approved")
+                        print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": merge approved"+"\x1b[0m")
                         self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                             causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
                         self.merging = True
@@ -280,11 +281,12 @@ class OBU(threading.Thread):
                     if(data["stationID"] == self.blocking_obu_id):
                         self.wants_to_merge = False
 
+                        print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna increase my speed"+"\x1b[0m")
                         self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                             causeCodes["Increase the speed"], causeCodes["Increase the speed"]] )
                         self.increaseSpeed()
 
-                        print("OBU_"+str(self.id)+" merge approved")
+                        print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": merge approved"+"\x1b[0m")
                         self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                             causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
                         self.merging = True
@@ -296,19 +298,21 @@ class OBU(threading.Thread):
 
             # Check if this OBU is on the near lane of the merge OBU
             if(self.checkIfImBlocking()):
-                print("OBU_"+str(self.id)+" i'm on the way of OBU_"+str(data["stationID"]))
+                print("\x1b[0;37;41m"+"OBU_"+str(self.id)+": i'm on the way of OBU_"+str(data["stationID"])+"\x1b[0m")
 
                 # Creates an random option to do the merge situation 
                 option = random.randint(0, 2)
-                print("GOING TO CHOSE OPTION: "+str(option)+" --------------------")
+                print("\x1b[0;37;43m"+"Merge situation number: "+str(option)+"\x1b[0m")
 
                 # 0) I'm gonna mantain my speed -> The merge OBU needs to reduce his speed
                 if (option == 0):
+                    print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna mantain my speed"+"\x1b[0m")
                     self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                         causeCodes["Mantain speed"], causeCodes["Mantain speed"]] )
 
                 # 1) I'm gonna reduce my speed -> The merge OBU increases his speed
                 elif (option == 1):
+                    print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna reduce my speed"+"\x1b[0m")
                     self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                         causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
 
@@ -317,6 +321,7 @@ class OBU(threading.Thread):
 
                 # 2) I'm gonna change my position to the next lane -> The merge OBU increases his speed 
                 elif (option == 2):
+                    print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna change my position"+"\x1b[0m")
                     self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                         causeCodes["Change position"], causeCodes["Change position"]] )
                     self.change_pos = True
@@ -334,6 +339,7 @@ class OBU(threading.Thread):
                 pass
             # Informs that he's gonna reduce his speed -> The merge OBU will increase his speed
             else:
+                print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna reduce my speed"+"\x1b[0m")
                 self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                     causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
 
@@ -344,6 +350,8 @@ class OBU(threading.Thread):
         # If the OBU receives an change position of other OBU that is not the merge OBU
         if(self.id > 1):
             if((data["causeCode"] == causeCodes["Change position"])):
+                print("\x1b[0;37;46m"+"OBU_"+str(self.id)+
+                      ": i'm gonna increase my speed because i have an OBU behind me"+"\x1b[0m")
                 self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                     causeCodes["Increase the speed"], causeCodes["Increase the speed"]] )
                 self.increaseSpeed()
@@ -474,11 +482,21 @@ class OBU(threading.Thread):
         elif(j == 1):
             pos = geopy.distance.geodesic(meters = (self.speed+20)*delta_dist*i).destination(start, 223)  
         elif(j >= 2 and j <= 4):
-            pos = geopy.distance.geodesic(meters = (self.speed+20)*delta_dist*i).destination(start, 221.3)  
+            pos = geopy.distance.geodesic(meters = (self.speed+20)*delta_dist*i).destination(start, 221.3)
+            if (j == 2):
+                self.publish_DENM( [pos.latitude, pos.longitude, 
+                                    causeCodes["Merge situation"], subCauseCodes["Merge done"]] )      
+                print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i finished my merge"+"\x1b[0m")  
         elif(j == 5):
+            print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna increase my speed because i have space"+"\x1b[0m")
+            self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                causeCodes["Increase the speed"], causeCodes["Increase the speed"]] )
             self.increaseSpeed()
             pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 221.3)  
         elif(j == 6):
+            print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna increase my speed because i have space"+"\x1b[0m")
+            self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                causeCodes["Increase the speed"], causeCodes["Increase the speed"]] )
             self.increaseSpeed()
             pos = geopy.distance.geodesic(meters = (self.speed-15)*delta_dist*i).destination(start, 221.3)
         elif(j > 6):
