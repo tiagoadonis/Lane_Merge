@@ -41,7 +41,10 @@ class OBU(threading.Thread):
     lane_clear_2: bool
     lane_clear_3: bool
     blocking_obu_id: int
-    reducing: bool  
+    reducing: int  
+
+    change_pos: bool
+    second_lane_clear: bool
 
     # The OBU constructor
     def __init__(self, ip: string, id: int, start_pos: list, speed: int):
@@ -62,7 +65,12 @@ class OBU(threading.Thread):
         self.lane_clear_3 = False
         self.lane_clear = False
         self.blocking_obu_id = -1
-        self.reducing = False  
+
+        # 0) not reducing | 1) reducing | 2) reducing to change | -1) to increase speed to 140km/h
+        self.reducing = 0  
+
+        self.change_pos = False
+        self.second_lane_clear = False
 
     # Method to connect to MQTT
     def connect_mqtt(self):
@@ -140,7 +148,11 @@ class OBU(threading.Thread):
 
             if(self.id == 1):
                 if(data["speed"] > 0):
-                    self.checkIfLaneIsClear(data)
+                    self.checkIfFirstLaneIsClear(data)
+
+            if(self.id == 3):
+                if(data["speed"] > 0):
+                    self.checkIfSecondLaneIsClear(data)                
 
     # The routine of the OBU objects - "main" method of this class
     def start(self): 
@@ -158,6 +170,8 @@ class OBU(threading.Thread):
 
         i = 0
         j = 0
+        k = 0
+        l = 0
         while not self.done:
             if (i == 1):
                 self.second_iteraction = True
@@ -175,25 +189,34 @@ class OBU(threading.Thread):
 
                 # Adjust the direction when merging
                 if(self.merging):
-                    if(self.reducing):
+                    if(self.reducing == 1):
                         pos = self.reducingToMergeSpeedPosMergeOBU(start, i, j)
                         j+=1
-                    else:
+                    elif(self.reducing == 0):
                         pos = self.mergingPos(start, i)
 
             # If the OBU starts on the main lane of the highway
             else:
-                if(self.reducing):
+                # The OBU is maintaining the speed
+                if(self.reducing == 0):
+                    pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 225)
+                # The OBU is reducing the speed                
+                elif(self.reducing == 1):
                     pos = self.reducingSpeedPosMainOBU(start, i, j)
                     j+=1
-                else:
-                    pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 225)
-                    # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
-                
+                # The OBU is reducing the speed to change position       
+                elif(self.reducing == 2):
+                    pos = self.reduceSpeedToChange(start, i, k)
+                    k+=1
+                # The OBU is inreasing his speed  
+                elif(self.reducing == -1):
+                    pos = self.increseSpeedAfterChange(start, i, l)
+                    l+=1
+
             # End of simulation
             if(i == 20):
                 self.merging = False
-                self.reducing = False
+                self.reducing = 0
                 self.done = True
 
             # Publish the CAM msg
@@ -246,7 +269,7 @@ class OBU(threading.Thread):
                     
                         self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                             causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
-                        self.reducing = True
+                        self.reducing = 1
                         self.reduceSpeed()
 
                         print("OBU_"+str(self.id)+" merge approved")
@@ -267,17 +290,17 @@ class OBU(threading.Thread):
                         self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                             causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
                         self.merging = True
-        
+
         # The OBU receives the intention of merge by another OBU
         if((data["causeCode"] == causeCodes["Merge situation"]) and (data["subCauseCode"] == subCauseCodes["Wants to merge"])):
             print("OBU_"+str(self.id)+": knows that the OBU_"+str(data["stationID"])+" wants to merge")
 
             # Check if this OBU is on the near lane of the merge OBU
             if(self.checkIfImBlocking()):
-                print("OBU_"+str(self.id)+" i'm on the way")
+                print("OBU_"+str(self.id)+" i'm on the way of OBU_"+str(data["stationID"]))
 
                 # Creates an random option to do the merge situation 
-                option = random.randint(0, 1)
+                option = random.randint(0, 2)
                 print("GOING TO CHOSE OPTION: "+str(option)+" --------------------")
 
                 # 0) I'm gonna mantain my speed -> The merge OBU needs to reduce his speed
@@ -285,25 +308,70 @@ class OBU(threading.Thread):
                     self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                         causeCodes["Mantain speed"], causeCodes["Mantain speed"]] )
 
-                # 1) I'm gonna reduce my speed -> The merge OBU needs to increase his speed
+                # 1) I'm gonna reduce my speed -> The merge OBU increases his speed
                 elif (option == 1):
                     self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                         causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
 
-                    self.reducing = True
+                    self.reducing = 1
                     self.reduceSpeed()
+
+                # 2) I'm gonna change my position to the next lane -> The merge OBU increases his speed 
+                elif (option == 2):
+                    self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                        causeCodes["Change position"], causeCodes["Change position"]] )
+                    self.change_pos = True
 
             # If this OBU is not on the way of the merge OBU
             else:
-                print("OBU_"+str(self.id)+" i'm not in the way")
+                print("OBU_"+str(self.id)+" i'm not in the way of OBU_"+str(data["stationID"]))
                 self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                     causeCodes["Mantain speed"], causeCodes["Mantain speed"]] )
 
-    # To check if the lane on the right side of the merge OBU is clear
-    def checkIfLaneIsClear(self, data):
+        # If the OBU wants to change the position for the next lane
+        if(self.change_pos):
+            # TODO -> implement if the lane is clear
+            if(self.second_lane_clear):
+                pass
+            # Informs that he's gonna reduce his speed -> The merge OBU will increase his speed
+            else:
+                self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                    causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
+
+                self.reducing = 2
+                self.reduceSpeed()
+                self.change_pos = False
+
+        # If the OBU receives an change position of other OBU that is not the merge OBU
+        if(self.id > 1):
+            if((data["causeCode"] == causeCodes["Change position"])):
+                self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                    causeCodes["Increase the speed"], causeCodes["Increase the speed"]] )
+                self.increaseSpeed()
+                self.reducing = -1
+
+    # To check if the second main lane is clear
+    def checkIfSecondLaneIsClear(self, data):
         # Create Point objects
         unfactor_coords = self.unfactorCoords([data["latitude"], data["longitude"]])
-        # print("["+str(data["latitude"])+", "+str(data["longitude"])+"]")
+        point = Point(self.truncate(unfactor_coords[0], 7), self.truncate(unfactor_coords[1], 7))
+        
+        # Create a square
+        coords = [(40.6403720, -8.6632580), (40.6403560, -8.6632180), (40.6401630, -8.6635340), (40.6401410, -8.6634910)]
+        poly = Polygon(coords)
+
+        if(data["stationID"] == 2):
+            if(poly.contains(point) == False):
+                print("OBU_"+str(self.id)+" THE LANE IS CLEAR: OBU_"+str(data["stationID"])+" : "+str(unfactor_coords))
+                self.second_lane_clear = True
+            else:
+                print("OBU_"+str(self.id)+" ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
+                self.second_lane_clear = False
+
+    # To check if the lane on the right side of the merge OBU is clear
+    def checkIfFirstLaneIsClear(self, data):
+        # Create Point objects
+        unfactor_coords = self.unfactorCoords([data["latitude"], data["longitude"]])
         point = Point(self.truncate(unfactor_coords[0], 7), self.truncate(unfactor_coords[1], 7))
 
         # Create a square
@@ -314,38 +382,33 @@ class OBU(threading.Thread):
             if(data["stationID"] == 2):
                 if(poly.contains(point) == False):
                     self.lane_clear_2 = True
-                    print("THE LANE IS CLEAR: OBU_"+str(data["stationID"])+" : "+str(unfactor_coords))
+                    print("OBU_"+str(self.id)+" THE LANE IS CLEAR: OBU_"+str(data["stationID"])+" : "+str(unfactor_coords))
                 else:
                     self.lane_clear_2 = False
                     self.blocking_obu_id = 2
-                    print("ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
+                    print("OBU_"+str(self.id)+" ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
             self.lane_clear = self.lane_clear_2
         elif(self.tot_obus == 2):
             if(data["stationID"] == 2):
                 if(poly.contains(point) == False):
                     self.lane_clear_2 = True
-                    print("THE LANE IS CLEAR: OBU_"+str(data["stationID"])+" : "+str(unfactor_coords))
+                    print("OBU_"+str(self.id)+" THE LANE IS CLEAR: OBU_"+str(data["stationID"])+" : "+str(unfactor_coords))
                 else:
                     self.lane_clear_2 = False
                     self.blocking_obu_id = 2
-                    print("ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
+                    print("OBU_"+str(self.id)+" ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
             elif(data["stationID"] == 3):
                 if(poly.contains(point) == False):
                     self.lane_clear_3 = True
-                    print("THE LANE IS CLEAR: OBU_"+str(data["stationID"])+" : "+str(unfactor_coords))
+                    print("OBU_"+str(self.id)+" THE LANE IS CLEAR: OBU_"+str(data["stationID"])+" : "+str(unfactor_coords))
                 else:
                     self.lane_clear_3 = False
                     self.blocking_obu_id = 3
-                    print("ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
+                    print("OBU_"+str(self.id)+" ATTENTION: THE LANE IS NOT CLEAR: OBU_"+str(data["stationID"])+" is on the way!!!!!!")
             self.lane_clear = self.lane_clear_2 and self.lane_clear_3
 
     # To check if the OBU is blocking the way of the merge OBU
     def checkIfImBlocking(self):
-        # 1st -> 40.6403890, -8.6633100
-        # 2nd -> 40.6403660, -8.6632630
-        # 3rd -> 40.6401800, -8.6635690
-        # 4th -> 40.6401600, -8.6635250
-
         # Create Point objects
         point = Point(self.actual_pos[0], self.actual_pos[1])
 
@@ -355,6 +418,32 @@ class OBU(threading.Thread):
 
         return poly.contains(point)
 
+    # To increase the speed of an main OBU when it receives an "change position" DENM message from another main OBU
+    def increseSpeedAfterChange(self, start, i, l):
+        if(l == 0):
+            pos = geopy.distance.geodesic(meters = (self.speed-20)*delta_dist*i).destination(start, 225)
+        elif(l == 1):
+            pos = geopy.distance.geodesic(meters = (self.speed-15)*delta_dist*i).destination(start, 225)  
+        elif(l >= 2):
+            pos = geopy.distance.geodesic(meters = (self.speed-12)*delta_dist*i).destination(start, 225)   
+
+        return pos
+
+    # To reduce the speed of an main OBU to change position
+    def reduceSpeedToChange(self, start, i, k):
+        if(k == 0):
+            pos = geopy.distance.geodesic(meters = (self.speed+15)*delta_dist*i).destination(start, 225)
+        elif(k == 1):
+            pos = geopy.distance.geodesic(meters = (self.speed+10)*delta_dist*i).destination(start, 223)  
+        elif(k == 2):
+            pos = geopy.distance.geodesic(meters = (self.speed+7)*delta_dist*i).destination(start, 223)  
+        elif(k == 3):
+            pos = geopy.distance.geodesic(meters = (self.speed+5)*delta_dist*i).destination(start, 223)
+        elif(k >= 3):
+            pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 223)
+
+        return pos
+
     # The interaction between the reducing speed event and the graphical position of the OBU on the main lane
     def reducingSpeedPosMainOBU(self, start, i, j):
         if(j == 0):
@@ -363,7 +452,7 @@ class OBU(threading.Thread):
             pos = geopy.distance.geodesic(meters = (self.speed+10)*delta_dist*i).destination(start, 225)  
         elif(j == 2):
             pos = geopy.distance.geodesic(meters = (self.speed+5)*delta_dist*i).destination(start, 225)  
-            self.reducing = False  
+            self.reducing = 0  
 
         return pos
 
@@ -422,7 +511,7 @@ class OBU(threading.Thread):
     # To update the actual positions coordinates
     def updatePos(self, actual_pos):
         self.actual_pos = actual_pos
-        # print("OBU_"+str(self.id)+" is on: "+str(self.actual_pos))
+        print("OBU_"+str(self.id)+" is on: "+str(self.actual_pos))
 
     # Developer-friendly string representation of the object
     def obu_status(self):
@@ -438,18 +527,14 @@ class OBU(threading.Thread):
     def unfactorCoords(self, coords):
         return [coords[0]/(10**7), coords[1]/(10**7)]
 
-    # TODO -> if the simulation begun with 2 OBUs and then i add one OBU the simulation with 3 OBUs doesn't detect
-    # the 3rd OBU (LANE IS CLEAR: OBU_3)
     # To reset to the initial state
     def reset(self):
         self.actual_pos = self.start_pos
         self.speed = self.initial_speed
         self.done = False
-        # self.lane_clear_2 = False
-        # self.lane_clear_3 = False
-        # self.lane_clear = False
         self.tot_obus = 0
         self.blocking_obu_id = -1
+        self.reducing = 0
         self.client.loop_stop()
         self.client.disconnect()
 

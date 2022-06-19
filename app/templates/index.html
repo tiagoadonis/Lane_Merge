@@ -15,6 +15,8 @@
         
         <script>
             var OBUs = []
+            // Create an info window to share between markers.
+            const infoWindow = new google.maps.InfoWindow();
            
             function initMap() {
                 map = new google.maps.Map(document.getElementById("map"), {
@@ -27,9 +29,6 @@
                     zoomControl: false,
                     scrollwheel: false
                 });
-
-                // Create an info window to share between markers.
-                const infoWindow = new google.maps.InfoWindow();
 
                 // RSU 
                 var rsu_pos = JSON.parse('{{rsu_pos}}');
