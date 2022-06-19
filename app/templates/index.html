@@ -100,26 +100,32 @@
                             if(i == 0){
                                 obu.setPosition(new google.maps.LatLng(data.OBU_1.actual_pos[0], data.OBU_1.actual_pos[1]));
                                 document.getElementById('obu_1').innerText = data.OBU_1.speed + " km/h";
+                                document.getElementById('obu_1_state').innerText = data.OBU_1.state;
                             }
                             // OBU 2
                             else if(i == 1){
                                 obu.setPosition(new google.maps.LatLng(data.OBU_2.actual_pos[0], data.OBU_2.actual_pos[1]));
                                 document.getElementById('obu_2').innerText = data.OBU_2.speed + " km/h";
+                                document.getElementById('obu_2_state').innerText = data.OBU_2.state;
+
                             }
                             // OBU 3
                             else if(i == 2){
                                 obu.setPosition(new google.maps.LatLng(data.OBU_3.actual_pos[0], data.OBU_3.actual_pos[1]));
                                 document.getElementById('obu_3').innerText = data.OBU_3.speed + " km/h";
+                                document.getElementById('obu_3_state').innerText = data.OBU_3.state;
                             }
                             // OBU 4
                             else if(i == 3){
                                 obu.setPosition(new google.maps.LatLng(data.OBU_4.actual_pos[0], data.OBU_4.actual_pos[1]));
                                 document.getElementById('obu_4').innerText = data.OBU_4.speed + " km/h";
+                                document.getElementById('obu_4_state').innerText = data.OBU_4.state;
                             }
                             // OBU 5
                             else if(i == 4){
                                 obu.setPosition(new google.maps.LatLng(data.OBU_5.actual_pos[0], data.OBU_5.actual_pos[1]));
                                 document.getElementById('obu_5').innerText = data.OBU_5.speed + " km/h";
+                                document.getElementById('obu_5_state').innerText = data.OBU_5.state;
                             }
                         }
                     });
@@ -225,6 +231,7 @@
                             OBUs[OBUs.length-1].setMap(null)
                             OBUs.pop();
                             document.getElementById('obu_3').innerText = "-- km/h";
+                            document.getElementById('obu_3_state').innerText = "-------";
                             // console.log("There are: "+OBUs.length+" OBUs on the simulation")
                             // console.log(OBUs)
                         }
@@ -233,6 +240,7 @@
                             OBUs[OBUs.length-1].setMap(null)
                             OBUs.pop();
                             document.getElementById('obu_4').innerText = "-- km/h";
+                            document.getElementById('obu_4_state').innerText = "-------";
                             // console.log("There are: "+OBUs.length+" OBUs on the simulation")
                             // console.log(OBUs)
                         }
@@ -241,6 +249,7 @@
                             OBUs[OBUs.length-1].setMap(null)
                             OBUs.pop();
                             document.getElementById('obu_5').innerText = "-- km/h";
+                            document.getElementById('obu_5_state').innerText = "-------";
                             // console.log("There are: "+OBUs.length+" OBUs on the simulation")
                             // console.log(OBUs)
                         }
@@ -298,7 +307,7 @@
                 <div class="info">
                     <p>
                         <i class="fa-solid fa-gauge-high"></i> <span id="obu_1"> -- km/h </span> &emsp;
-                        <i class="fa-solid fa-car-side"></i> Merging 
+                        <i class="fa-solid fa-car-side"></i> <span id="obu_1_state"> ------- </span>
                     </p>
                 </div>
                 <hr>
@@ -308,7 +317,7 @@
                 <div class="info">
                     <p>
                         <i class="fa-solid fa-gauge-high"></i> <span id="obu_2"> -- km/h </span> &emsp; 
-                        <i class="fa-solid fa-car-side"></i> Changing Position
+                        <i class="fa-solid fa-car-side"></i> <span id="obu_2_state"> ------- </span>
                     </p>
                 </div>
                 <hr>
@@ -318,7 +327,7 @@
                 <div class="info">
                     <p>
                         <i class="fa-solid fa-gauge-high"></i> <span id="obu_3"> -- km/h </span> &emsp;
-                        <i class="fa-solid fa-car-side"></i> Driving
+                        <i class="fa-solid fa-car-side"></i> <span id="obu_3_state"> ------- </span>
                     </p>
                 </div>
                 <hr>
@@ -328,7 +337,7 @@
                 <div class="info">
                     <p>
                         <i class="fa-solid fa-gauge-high"></i> <span id="obu_4"> -- km/h </span> &emsp;
-                        <i class="fa-solid fa-car-side"></i> Driving
+                        <i class="fa-solid fa-car-side"></i> <span id="obu_4_state"> ------- </span>
                     </p>
                 </div>
                 <hr>
@@ -338,7 +347,7 @@
                 <div class="info">
                     <p>
                         <i class="fa-solid fa-gauge-high"></i> <span id="obu_5"> -- km/h </span> &emsp;
-                        <i class="fa-solid fa-car-side"></i> Changing Position
+                        <i class="fa-solid fa-car-side"></i> <span id="obu_5_state"> ------- </span>
                     </p>
                 </div>
                 <hr>

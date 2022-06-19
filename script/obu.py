@@ -16,6 +16,7 @@ speed_values = [60, 80, 100, 120, 140]
 # Delta distance - the default move distance that a OBU mades 
 delta_dist = 0.05
 
+# TODO -> i don't use the abort merge
 # DENM "causeCodes" and "subCauseCodes"
 causeCodes = {"Approaching Merge": 31, "Merge situation": 32, "Change position": 33, 
               "Reduce the speed": 34, "Increase the speed": 35, "Mantain speed": 36}
@@ -30,6 +31,7 @@ class OBU(threading.Thread):
     start_pos: list
     initial_speed: int
     speed: int
+    state: string
     actual_pos: list
     done: bool
     stationType: int
@@ -42,18 +44,18 @@ class OBU(threading.Thread):
     lane_clear_3: bool
     blocking_obu_id: int
     reducing: int  
-
     change_pos: bool
     second_lane_clear: bool
 
     # The OBU constructor
-    def __init__(self, ip: string, id: int, start_pos: list, speed: int):
+    def __init__(self, ip: string, id: int, start_pos: list, speed: int, state: string):
         threading.Thread.__init__(self)
         self.ip = ip
         self.id = id
         self.start_pos = start_pos
         self.initial_speed = speed
         self.speed = speed
+        self.state = state
         self.done = False
         self.stationType = 5                    # OBUs are all station type = 5
         self.client = self.connect_mqtt()
@@ -65,10 +67,7 @@ class OBU(threading.Thread):
         self.lane_clear_3 = False
         self.lane_clear = False
         self.blocking_obu_id = -1
-
-        # 0) not reducing | 1) reducing | 2) reducing to change | -1) to increase speed to 140km/h
-        self.reducing = 0  
-
+        self.reducing = 0           # 0) not reducing | 1) reducing | 2) reducing to change | -1) to increase speed to 140km/h  
         self.change_pos = False
         self.second_lane_clear = False
 
@@ -255,6 +254,7 @@ class OBU(threading.Thread):
                 self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                         causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
                 self.merging = True
+                self.state = "Merging"
                 print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna merge and increase my speed"+"\x1b[0m")
                 self.increaseSpeed()
 
@@ -275,6 +275,7 @@ class OBU(threading.Thread):
                         self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                             causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
                         self.merging = True
+                        self.state = "Merging"
 
                 # The OBU who's on the way informs that he's gonna reduce his speed -> The merge OBU will increase his speed
                 if(data["causeCode"] == causeCodes["Reduce the speed"]):
@@ -290,6 +291,7 @@ class OBU(threading.Thread):
                         self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                             causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
                         self.merging = True
+                        self.state = "Merging"
 
         # The OBU receives the intention of merge by another OBU
         if((data["causeCode"] == causeCodes["Merge situation"]) and (data["subCauseCode"] == subCauseCodes["Wants to merge"])):
@@ -321,6 +323,7 @@ class OBU(threading.Thread):
 
                 # 2) I'm gonna change my position to the next lane -> The merge OBU increases his speed 
                 elif (option == 2):
+                    self.state = "Change Position" 
                     print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna change my position"+"\x1b[0m")
                     self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                         causeCodes["Change position"], causeCodes["Change position"]] )
@@ -453,9 +456,10 @@ class OBU(threading.Thread):
         if(k == 0):
             pos = geopy.distance.geodesic(meters = (self.speed+15)*delta_dist*i).destination(start, 225)
         elif(k == 1):
-            pos = geopy.distance.geodesic(meters = (self.speed+10)*delta_dist*i).destination(start, 223)  
+            pos = geopy.distance.geodesic(meters = (self.speed+10)*delta_dist*i).destination(start, 223) 
         elif(k == 2):
             pos = geopy.distance.geodesic(meters = (self.speed+7)*delta_dist*i).destination(start, 223)  
+            self.state = "Driving" 
         elif(k == 3):
             pos = geopy.distance.geodesic(meters = (self.speed+5)*delta_dist*i).destination(start, 223)
         elif(k >= 3):
@@ -487,6 +491,7 @@ class OBU(threading.Thread):
                 self.publish_DENM( [pos.latitude, pos.longitude, 
                                     causeCodes["Merge situation"], subCauseCodes["Merge done"]] )      
                 print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i finished my merge"+"\x1b[0m")  
+                self.state = "Driving"
         elif(j == 5):
             print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna increase my speed because i have space"+"\x1b[0m")
             self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
@@ -515,6 +520,7 @@ class OBU(threading.Thread):
                 self.publish_DENM( [pos.latitude, pos.longitude, 
                                 causeCodes["Merge situation"], subCauseCodes["Merge done"]] )      
                 print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i finished my merge"+"\x1b[0m")
+                self.state = "Driving"
         elif(i >= 17 and i <= 20):
             pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 221.7)
 
@@ -546,7 +552,8 @@ class OBU(threading.Thread):
     # Developer-friendly string representation of the object
     def obu_status(self):
         repr = {"actual_pos": self.actual_pos,
-                "speed": self.speed}
+                "speed": self.speed,
+                "state": self.state}
         return repr
 
     # To truncate an number with the number of decimals passed as argument
@@ -561,6 +568,7 @@ class OBU(threading.Thread):
     def reset(self):
         self.actual_pos = self.start_pos
         self.speed = self.initial_speed
+        self.state = "Driving"
         self.done = False
         self.tot_obus = 0
         self.blocking_obu_id = -1

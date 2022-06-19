@@ -44,8 +44,8 @@ class LaneMerge(threading.Thread):
         threading.Thread.__init__(self)
 
         # Create the OBUs
-        obu_1 = OBU(obu_1_ip, 1, obu_1_start, 80)
-        obu_2 = OBU(obu_2_ip, 2, obu_2_start, 120)
+        obu_1 = OBU(obu_1_ip, 1, obu_1_start, 80, "Driving")
+        obu_2 = OBU(obu_2_ip, 2, obu_2_start, 120, "Driving")
 
         # TODO -> only to test the laneMerge.py alone without web app
         # obu_3 = OBU(obu_3_ip, 3, obu_3_start, 120)
@@ -81,17 +81,17 @@ class LaneMerge(threading.Thread):
         if(int(numObus) > len(self.OBUs)):  
             # Add OBU 3
             if(len(self.OBUs) == 2):
-                obu_3 = OBU(obu_3_ip, 3, obu_3_start, 120)
+                obu_3 = OBU(obu_3_ip, 3, obu_3_start, 120, "Driving")
                 self.OBUs.append(obu_3)
 
             # TODO -> uncomment the following line to add more than 3 OBUs
             # Add OBU 4
             # elif(len(self.OBUs) == 3):
-            #     obu_4 = OBU(obu_4_ip, 4, obu_4_start, 120)
+            #     obu_4 = OBU(obu_4_ip, 4, obu_4_start, 120, "Driving")
             #     self.OBUs.append(obu_4)
             # # Add OBU 5
             # elif(len(self.OBUs) == 4):
-            #     obu_5 = OBU(obu_5_ip, 5, obu_5_start, 120)
+            #     obu_5 = OBU(obu_5_ip, 5, obu_5_start, 120, "Driving")
             #     self.OBUs.append(obu_5)
 
         # Need to remove some OBUs
