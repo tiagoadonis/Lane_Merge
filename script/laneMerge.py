@@ -11,9 +11,10 @@ rsu_ip = "192.168.98.10"
 obu_1_ip = "192.168.98.20"
 obu_2_ip = "192.168.98.21"
 obu_3_ip = "192.168.98.22"
+obu_4_ip = "192.168.98.23"
+
 # TODO -> add the following IPs addresses to the docker compose file
-obu_4_ip = "192.168.98.22"
-obu_5_ip = "192.168.98.22"
+# obu_5_ip = "192.168.98.24"
 
 # Coordinates RSU
 rsu_coords = [40.640585, -8.663218]
@@ -27,12 +28,12 @@ obu_2_start = [40.640615, -8.662906]
 # Coordinates of OBU_3's first position
 obu_3_start = [40.640633, -8.662941]
 
+# Coordinates of OBU_3's first position
+obu_4_start = [40.640544, -8.663062]
+
 # TODO ->The cooordinates bellow are only for test
 # Coordinates of OBU_3's first position
-obu_4_start = [40.640422, -8.663217]
-
-# Coordinates of OBU_3's first position
-obu_5_start = [40.640093, -8.663590]
+# obu_5_start = [40.640093, -8.663590]
 
 # ------------------------------------------ Lane Merge Class ---------------------------------------- 
 class LaneMerge(threading.Thread):
@@ -73,7 +74,7 @@ class LaneMerge(threading.Thread):
             obu_thread = threading.Thread(target = self.OBUs[i].start)
             self.OBUs_threads.append(obu_thread)
             obu_thread.start()
-            # print("GOING TO START THE THREAD OF OBU"+str(self.OBUs[i].id))
+            print("GOING TO START THE THREAD OF OBU"+str(self.OBUs[i].id))
 
     # Update the number of OBUs
     def updateNumOfObus(self, numObus):
@@ -83,13 +84,13 @@ class LaneMerge(threading.Thread):
             if(len(self.OBUs) == 2):
                 obu_3 = OBU(obu_3_ip, 3, obu_3_start, 120, "Driving")
                 self.OBUs.append(obu_3)
+            # Add OBU 4
+            elif(len(self.OBUs) == 3):
+                obu_4 = OBU(obu_4_ip, 4, obu_4_start, 120, "Driving")
+                self.OBUs.append(obu_4)
 
             # TODO -> uncomment the following line to add more than 3 OBUs
-            # Add OBU 4
-            # elif(len(self.OBUs) == 3):
-            #     obu_4 = OBU(obu_4_ip, 4, obu_4_start, 120, "Driving")
-            #     self.OBUs.append(obu_4)
-            # # Add OBU 5
+            # Add OBU 5
             # elif(len(self.OBUs) == 4):
             #     obu_5 = OBU(obu_5_ip, 5, obu_5_start, 120, "Driving")
             #     self.OBUs.append(obu_5)
@@ -98,6 +99,9 @@ class LaneMerge(threading.Thread):
         elif(int(numObus) < len(self.OBUs)):
             # Removing OBU 3
             if( (len(self.OBUs) >= 3) and (len(self.OBUs) <= 5) ):
+                self.OBUs.pop(len(self.OBUs)-1)
+            # Removing OBU 5
+            if( (len(self.OBUs) >= 4) and (len(self.OBUs) <= 5) ):
                 self.OBUs.pop(len(self.OBUs)-1)
 
     # To get the actual status of the Lane Merge application

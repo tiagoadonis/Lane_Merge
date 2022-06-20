@@ -1,7 +1,6 @@
 # Authors: Tiago Dias   NMEC: 88896
 #          Martim Neves NMEC: 88904
 
-from ctypes.wintypes import PINT
 import paho.mqtt.client as mqttClient
 import string, threading, json, geopy, random
 from script.msg.cam import *
@@ -23,6 +22,8 @@ causeCodes = {"Approaching Merge": 31, "Merge situation": 32, "Change position":
 
 # The causeCode "Merge situation" has the following subCauseCodes
 subCauseCodes = {"Wants to merge": 41, "Going to merge": 42, "Merge done": 43, "Abort merge": 44}
+
+# TODO -> change the variables and function names -> put '_' (underscore) between the words 
 
 # The class taht represents the OBUs
 class OBU(threading.Thread):
@@ -46,6 +47,10 @@ class OBU(threading.Thread):
     reducing: int  
     change_pos: bool
     second_lane_clear: bool
+    
+    lane_clear_4: bool
+    have_an_obu_behind: bool
+    obu_id_behind_me: int
 
     # The OBU constructor
     def __init__(self, ip: string, id: int, start_pos: list, speed: int, state: string):
@@ -70,6 +75,10 @@ class OBU(threading.Thread):
         self.reducing = 0           # 0) not reducing | 1) reducing | 2) reducing to change | -1) to increase speed to 140km/h  
         self.change_pos = False
         self.second_lane_clear = False
+
+        self.lane_clear_4 = False
+        self.have_an_obu_behind = False
+        self.obu_id_behind_me = -1
 
     # Method to connect to MQTT
     def connect_mqtt(self):
@@ -151,7 +160,11 @@ class OBU(threading.Thread):
 
             if(self.id == 3):
                 if(data["speed"] > 0):
-                    self.checkIfSecondLaneIsClear(data)                
+                    self.checkIfSecondLaneIsClear(data)  
+
+            if(self.id == 4):
+                if(data["speed"] > 0):
+                    self.iGotAnObuBehind(data)
 
     # The routine of the OBU objects - "main" method of this class
     def start(self): 
@@ -171,8 +184,10 @@ class OBU(threading.Thread):
         while not self.done:
             if (i == 1):
                 self.second_iteraction = True
+                print("\x1b[0;37;43m"+"OBU_"+str(self.id)+" initial state: \""+str(self.state)+"\""+"\x1b[0m")
             if(i > 1):
                 self.second_iteraction = False
+                # print("OBU_"+str(self.id)+"NUM OF OTHERS OBUS: "+str(self.tot_obus)+" ----------------------------")
 
             # If it's the OBU that starts runing on the merge lane of the highway
             if(self.id == 1):
@@ -246,52 +261,93 @@ class OBU(threading.Thread):
         
         #  If the OBU wants to merge and receives an DENM message 
         if(self.wants_to_merge == True):
-            # If the lane on the right side of the merge OBU is clear
-            if(self.lane_clear):
-                self.wants_to_merge = False
+            if(self.tot_obus == 3):
+                # if the lane is not clear
+                if(self.lane_clear == False):
+                    # The OBU who's on the way informs that he's gonna mantain his speed -> The merge OBU needs to reduce his speed
+                    if(data["causeCode"] ==  causeCodes["Mantain speed"]):
+                        if(data["stationID"] == self.blocking_obu_id):
+                            self.wants_to_merge = False
+                        
+                            print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna reduce my speed"+"\x1b[0m")
+                            self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                                causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
+                            self.reducing = 1
+                            self.reduceSpeed()
 
-                print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": merge approved!"+"\x1b[0m")
-                self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
-                                        causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
-                self.merging = True
-                self.state = "Merging"
-                print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna merge and increase my speed"+"\x1b[0m")
-                self.increaseSpeed()
+                            print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": merge approved"+"\x1b[0m")
+                            self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                                causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
+                            self.merging = True
+                            self.state = "Merging"
+                            print("\x1b[0;37;43m"+"OBU_"+str(self.id)+" change state: \""+str(self.state)+"\""+"\x1b[0m")
 
-            # If the lane on the right side of the merge OBU is blocked
+                    elif(data["causeCode"] ==  causeCodes["Reduce the speed"]):
+                        if(data["stationID"] == self.blocking_obu_id):
+                            self.wants_to_merge = False
+
+                            print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna increase my speed"+"\x1b[0m")
+                            self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                                causeCodes["Increase the speed"], causeCodes["Increase the speed"]] )
+                            self.increaseSpeed()
+
+                            print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": merge approved"+"\x1b[0m")
+                            self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                                causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
+                            self.merging = True
+                            self.state = "Merging"
+                            print("\x1b[0;37;43m"+"OBU_"+str(self.id)+" change state: \""+str(self.state)+"\""+"\x1b[0m")
+
             else:
-                # The OBU who's on the way informs that he's gonna mantain his speed -> The merge OBU needs to reduce his speed
-                if(data["causeCode"] ==  causeCodes["Mantain speed"]):
-                    if(data["stationID"] == self.blocking_obu_id):
-                        self.wants_to_merge = False
-                    
-                        print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna reduce my speed"+"\x1b[0m")
-                        self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
-                                            causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
-                        self.reducing = 1
-                        self.reduceSpeed()
+                # If the lane on the right side of the merge OBU is clear
+                if(self.lane_clear):
+                    self.wants_to_merge = False
 
-                        print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": merge approved"+"\x1b[0m")
-                        self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                    print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": merge approved!"+"\x1b[0m")
+                    self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                             causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
-                        self.merging = True
-                        self.state = "Merging"
+                    self.merging = True
+                    self.state = "Merging"
+                    print("\x1b[0;37;43m"+"OBU_"+str(self.id)+" change state: \""+str(self.state)+"\""+"\x1b[0m")
+                    print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna merge and increase my speed"+"\x1b[0m")
+                    self.increaseSpeed()
 
-                # The OBU who's on the way informs that he's gonna reduce his speed -> The merge OBU will increase his speed
-                if(data["causeCode"] == causeCodes["Reduce the speed"]):
-                    if(data["stationID"] == self.blocking_obu_id):
-                        self.wants_to_merge = False
+                # If the lane on the right side of the merge OBU is blocked
+                else:
+                    # The OBU who's on the way informs that he's gonna mantain his speed -> The merge OBU needs to reduce his speed
+                    if(data["causeCode"] ==  causeCodes["Mantain speed"]):
+                        if(data["stationID"] == self.blocking_obu_id):
+                            self.wants_to_merge = False
+                        
+                            print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna reduce my speed"+"\x1b[0m")
+                            self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                                causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
+                            self.reducing = 1
+                            self.reduceSpeed()
 
-                        print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna increase my speed"+"\x1b[0m")
-                        self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
-                                            causeCodes["Increase the speed"], causeCodes["Increase the speed"]] )
-                        self.increaseSpeed()
+                            print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": merge approved"+"\x1b[0m")
+                            self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                                causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
+                            self.merging = True
+                            self.state = "Merging"
+                            print("\x1b[0;37;43m"+"OBU_"+str(self.id)+" change state: \""+str(self.state)+"\""+"\x1b[0m")
 
-                        print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": merge approved"+"\x1b[0m")
-                        self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
-                                            causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
-                        self.merging = True
-                        self.state = "Merging"
+                    # The OBU who's on the way informs that he's gonna reduce his speed -> The merge OBU will increase his speed
+                    if(data["causeCode"] == causeCodes["Reduce the speed"]):
+                        if(data["stationID"] == self.blocking_obu_id):
+                            self.wants_to_merge = False
+
+                            print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna increase my speed"+"\x1b[0m")
+                            self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                                causeCodes["Increase the speed"], causeCodes["Increase the speed"]] )
+                            self.increaseSpeed()
+
+                            print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": merge approved"+"\x1b[0m")
+                            self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                                causeCodes["Merge situation"], subCauseCodes["Going to merge"]] )
+                            self.merging = True
+                            self.state = "Merging"
+                            print("\x1b[0;37;43m"+"OBU_"+str(self.id)+" change state: \""+str(self.state)+"\""+"\x1b[0m")
 
         # The OBU receives the intention of merge by another OBU
         if((data["causeCode"] == causeCodes["Merge situation"]) and (data["subCauseCode"] == subCauseCodes["Wants to merge"])):
@@ -300,34 +356,36 @@ class OBU(threading.Thread):
 
             # Check if this OBU is on the near lane of the merge OBU
             if(self.checkIfImBlocking()):
-                print("\x1b[0;37;41m"+"OBU_"+str(self.id)+": i'm on the way of OBU_"+str(data["stationID"])+"\x1b[0m")
+                if(self.id == 3):
+                    print("\x1b[0;37;41m"+"OBU_"+str(self.id)+": i'm on the way of OBU_"+str(data["stationID"])+"\x1b[0m")
 
-                # Creates an random option to do the merge situation 
-                option = random.randint(0, 2)
-                print("\x1b[0;37;43m"+"Merge situation number: "+str(option)+"\x1b[0m")
+                    # Creates an random option to do the merge situation 
+                    option = random.randint(0, 2)
+                    print("\x1b[0;37;43m"+"Merge situation number: "+str(option)+"\x1b[0m")
 
-                # 0) I'm gonna mantain my speed -> The merge OBU needs to reduce his speed
-                if (option == 0):
-                    print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna mantain my speed"+"\x1b[0m")
-                    self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
-                                        causeCodes["Mantain speed"], causeCodes["Mantain speed"]] )
+                    # 0) I'm gonna mantain my speed -> The merge OBU needs to reduce his speed
+                    if (option == 0):
+                        print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna mantain my speed"+"\x1b[0m")
+                        self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                            causeCodes["Mantain speed"], causeCodes["Mantain speed"]] )
 
-                # 1) I'm gonna reduce my speed -> The merge OBU increases his speed
-                elif (option == 1):
-                    print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna reduce my speed"+"\x1b[0m")
-                    self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
-                                        causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
+                    # 1) I'm gonna reduce my speed -> The merge OBU increases his speed
+                    elif (option == 1):
+                        print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna reduce my speed"+"\x1b[0m")
+                        self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                            causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
 
-                    self.reducing = 1
-                    self.reduceSpeed()
+                        self.reducing = 1
+                        self.reduceSpeed()
 
-                # 2) I'm gonna change my position to the next lane -> The merge OBU increases his speed 
-                elif (option == 2):
-                    self.state = "Change Position" 
-                    print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna change my position"+"\x1b[0m")
-                    self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
-                                        causeCodes["Change position"], causeCodes["Change position"]] )
-                    self.change_pos = True
+                    # 2) I'm gonna change my position to the next lane -> The merge OBU increases his speed 
+                    elif (option == 2):
+                        self.state = "Change Position" 
+                        print("\x1b[0;37;43m"+"OBU_"+str(self.id)+" change state: \""+str(self.state)+"\""+"\x1b[0m")  
+                        print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna change my position"+"\x1b[0m")
+                        self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                            causeCodes["Change position"], causeCodes["Change position"]] )
+                        self.change_pos = True
 
             # If this OBU is not on the way of the merge OBU
             else:
@@ -359,6 +417,33 @@ class OBU(threading.Thread):
                                     causeCodes["Increase the speed"], causeCodes["Increase the speed"]] )
                 self.increaseSpeed()
                 self.reducing = -1
+
+            # If the OBU_4 has an car behind
+            if(self.have_an_obu_behind):
+                if((data["causeCode"] ==  causeCodes["Reduce the speed"]) and (data["stationID"] == self.obu_id_behind_me)):
+                    print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna mantain my speed"+"\x1b[0m")
+                    self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
+                                        causeCodes["Mantain speed"], causeCodes["Mantain speed"]] )
+                    
+    # To check if the an main OBU has an OBU behind him
+    def iGotAnObuBehind(self, data):
+        # Create Point objects
+        unfactor_coords = self.unfactorCoords([data["latitude"], data["longitude"]])
+        point = Point(self.truncate(unfactor_coords[0], 7), self.truncate(unfactor_coords[1], 7))
+
+        # Create a square
+        coords = [(40.6404040, -8.6632890), (40.6403800, -8.6632360), (40.6402510, -8.6634820), (40.6402370, -8.6634330)]
+        poly = Polygon(coords)
+
+        if(data["stationID"] == 3):
+            if(poly.contains(point) == False):
+                print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": i don't have nobody behind me near an merge point"+"\x1b[0m")
+                self.have_an_obu_behind = False
+            else:
+                print("\x1b[0;37;41m"+"OBU_"+str(self.id)+": i have OBU_"+str(data["stationID"])
+                                            +" behind me near an merge point"+"\x1b[0m")
+                self.have_an_obu_behind = True
+                self.obu_id_behind_me = 3
 
     # To check if the second main lane is clear
     def checkIfSecondLaneIsClear(self, data):
@@ -428,6 +513,42 @@ class OBU(threading.Thread):
                     print("\x1b[0;37;41m"+"OBU_"+str(self.id)+" ATTENTION: the first lane is not clear (analysing OBU_"
                                          +str(data["stationID"])+" position)"+"\x1b[0m")
             self.lane_clear = self.lane_clear_2 and self.lane_clear_3
+        
+        elif(self.tot_obus == 3):
+            if(data["stationID"] == 2):
+                if(poly.contains(point) == False):
+                    self.lane_clear_2 = True
+                    print("\x1b[0;37;42m"+"OBU_"+str(self.id)+
+                          ": i know that the first lane is clear for a merge situation (analysing OBU_"
+                          +str(data["stationID"])+" position)"+"\x1b[0m")
+                else:
+                    self.lane_clear_2 = False
+                    self.blocking_obu_id = 2
+                    print("\x1b[0;37;41m"+"OBU_"+str(self.id)+" ATTENTION: the first lane is not clear (analysing OBU_"
+                                         +str(data["stationID"])+" position)"+"\x1b[0m")
+            elif(data["stationID"] == 3):
+                if(poly.contains(point) == False):
+                    self.lane_clear_3 = True
+                    print("\x1b[0;37;42m"+"OBU_"+str(self.id)+
+                          ": i know that the first lane is clear for a merge situation (analysing OBU_"
+                          +str(data["stationID"])+" position)"+"\x1b[0m")
+                else:
+                    self.lane_clear_3 = False
+                    self.blocking_obu_id = 3
+                    print("\x1b[0;37;41m"+"OBU_"+str(self.id)+" ATTENTION: the first lane is not clear (analysing OBU_"
+                                         +str(data["stationID"])+" position)"+"\x1b[0m")
+            elif(data["stationID"] == 4):
+                if(poly.contains(point) == False):
+                    self.lane_clear_4 = True
+                    print("\x1b[0;37;42m"+"OBU_"+str(self.id)+
+                          ": i know that the first lane is clear for a merge situation (analysing OBU_"
+                          +str(data["stationID"])+" position)"+"\x1b[0m")
+                else:
+                    self.lane_clear_4 = False
+                    self.blocking_obu_id = 4
+                    print("\x1b[0;37;41m"+"OBU_"+str(self.id)+" ATTENTION: the first lane is not clear (analysing OBU_"
+                                         +str(data["stationID"])+" position)"+"\x1b[0m")
+            self.lane_clear = self.lane_clear_2 and self.lane_clear_3 and self.lane_clear_4
 
     # To check if the OBU is blocking the way of the merge OBU
     def checkIfImBlocking(self):
@@ -460,6 +581,7 @@ class OBU(threading.Thread):
         elif(k == 2):
             pos = geopy.distance.geodesic(meters = (self.speed+7)*delta_dist*i).destination(start, 223)  
             self.state = "Driving" 
+            print("\x1b[0;37;43m"+"OBU_"+str(self.id)+" change state: \""+str(self.state)+"\""+"\x1b[0m")
         elif(k == 3):
             pos = geopy.distance.geodesic(meters = (self.speed+5)*delta_dist*i).destination(start, 223)
         elif(k >= 3):
@@ -492,6 +614,7 @@ class OBU(threading.Thread):
                                     causeCodes["Merge situation"], subCauseCodes["Merge done"]] )      
                 print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i finished my merge"+"\x1b[0m")  
                 self.state = "Driving"
+                print("\x1b[0;37;43m"+"OBU_"+str(self.id)+" change state: \""+str(self.state)+"\""+"\x1b[0m")
         elif(j == 5):
             print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna increase my speed because i have space"+"\x1b[0m")
             self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
@@ -521,6 +644,7 @@ class OBU(threading.Thread):
                                 causeCodes["Merge situation"], subCauseCodes["Merge done"]] )      
                 print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i finished my merge"+"\x1b[0m")
                 self.state = "Driving"
+                print("\x1b[0;37;43m"+"OBU_"+str(self.id)+" change state: \""+str(self.state)+"\""+"\x1b[0m")
         elif(i >= 17 and i <= 20):
             pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 221.7)
 
@@ -573,6 +697,7 @@ class OBU(threading.Thread):
         self.tot_obus = 0
         self.blocking_obu_id = -1
         self.reducing = 0
+        self.obu_id_behind_me = -1
         self.client.loop_stop()
         self.client.disconnect()
 
