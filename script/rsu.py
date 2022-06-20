@@ -18,7 +18,7 @@ causeCodes = {"Approaching Merge": 31, "Merge situation": 32, "Change position":
               "Reduce the speed": 34, "Increase the speed": 35, "Mantain speed": 36}
 
 # The causeCode "Merge situation" has the following subCauseCodes
-subCauseCodes = {"Wants to merge": 41, "Going to merge": 42, "Merge done": 43, "Abort merge": 44}
+subCauseCodes = {"Wants to merge": 41, "Going to merge": 42, "Merge done": 43}
 
 # The class taht represents the RSUs
 class RSU(threading.Thread):
@@ -58,7 +58,6 @@ class RSU(threading.Thread):
         result = self.client.publish("vanetza/in/cam", repr(msg))
         status = result[0]
 
-        # DEBUG ONLY
         if status == 0:
             print("RSU_"+str(self.id)+" sent CAM: Latitude: "+str(self.truncate(data[0], 7))+
                   ", Longitude: "+str(self.truncate(data[1], 7))+", Speed: "+str(data[2]))
@@ -77,14 +76,12 @@ class RSU(threading.Thread):
         result = self.client.publish("vanetza/in/denm", repr(msg))
         status = result[0]
 
-        # DEBUG ONLY
         if status == 0:
             print("RSU_"+str(self.id)+" sent DENM: Latitude: "+str(self.truncate(data[0], 7))+", Longitude: "
                   +str(self.truncate(data[1], 7))+", CauseCode: "+str(data[2])+", SubCauseCode: "+str(data[3]))
 
     # Gets the message received on the subscribes topics
     def get_sub_msg(self, client, userdata, msg):
-        # print("OBU_"+str(self.id)+": received "+msg.payload.decode())
         msg_type = msg.topic
         msg = json.loads(msg.payload.decode())
 
@@ -108,7 +105,7 @@ class RSU(threading.Thread):
             print("RSU_"+str(self.id)+" received CAM: "+str(data))
             self.approachingMergePoint(data)
 
-     # The routine of the RSU - "main" method of this class
+    # The routine of the RSU - "main" method of this class
     def start(self):        
         # Connect to the MQTT
         self.client = mqttClient.Client("RSUU_"+str(self.id))
@@ -119,11 +116,15 @@ class RSU(threading.Thread):
         self.client.loop_start()
         self.client.subscribe([("vanetza/out/cam", 0), ("vanetza/out/denm", 1)])
         
+        # Auxiliary variable
         i = 0
+
+        # Begin the life cycle of the RSU
         while not self.done:
             # Publish the CAM msg
             self.publish_CAM([self.rsu_coords[0], self.rsu_coords[1], 0])
 
+            # End of simulation
             if(i == 20):
                 self.done = True
                 print("\x1b[0;37;41m"+"RSU_"+str(self.id)+": simulation done"+"\x1b[0m")
@@ -132,20 +133,19 @@ class RSU(threading.Thread):
             # Send the CAMs at a 1Hz frequency
             sleep(1)
         
+        # Disconnect the MQTT subscription 
         self.client.loop_stop()
         self.client.disconnect()
 
     # Check if there's a vehicle approaching the merge point
     def approachingMergePoint(self, data):
-        # Unfactor the coordinates received
+        # Unfactorizing the coordinates received
         unfactor_coords = [data["latitude"]/(10**7), data["longitude"]/(10**7)]
-        # print("UNFACTOR COORDS: "+str(unfactor_coords))
 
         # Last position before the merge point (merge_point - delta_dist)
         approaching_merge = geopy.Point(merge_coords[0], merge_coords[1])
         merge_dist = geopy.distance.geodesic(meters = -data["speed"]*delta_dist).destination(approaching_merge, 223)
         appr_merge_coords = [self.truncate(merge_dist.latitude, 7), self.truncate(merge_dist.longitude, 7)]
-        # print("Approaching merge coords: "+str(appr_merge_coords))
 
         # There's a vehicle approaching the merge point
         if((appr_merge_coords[0] == unfactor_coords[0]) and (appr_merge_coords[1] == unfactor_coords[1])):

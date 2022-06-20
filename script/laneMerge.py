@@ -25,10 +25,10 @@ obu_2_start = [40.640615, -8.662906]
 # Coordinates of OBU_3's first position
 obu_3_start = [40.640633, -8.662941]
 
-# Coordinates of OBU_3's first position
+# Coordinates of OBU_4's first position
 obu_4_start = [40.640544, -8.663062]
 
-# ------------------------------------------ Lane Merge Class ---------------------------------------- 
+# ---------------------------------------------------- Lane Merge Class ---------------------------------------------------- 
 class LaneMerge(threading.Thread):
     OBUs: list
     rsu: RSU
@@ -37,14 +37,14 @@ class LaneMerge(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
-        # Create the OBUs
+        # Create the default OBUs
         obu_1 = OBU(obu_1_ip, 1, obu_1_start, 80, "Driving")
         obu_2 = OBU(obu_2_ip, 2, obu_2_start, 120, "Driving")
 
         # Create the RSU
         self.rsu = RSU(rsu_ip, 0, rsu_coords)
         
-        # An OBU list with all the OBUs created
+        # An OBU list with all the defaults OBUs created
         self.OBUs = []
         self.OBUs.append(obu_1)
         self.OBUs.append(obu_2)
@@ -62,7 +62,6 @@ class LaneMerge(threading.Thread):
             obu_thread = threading.Thread(target = self.OBUs[i].start)
             self.OBUs_threads.append(obu_thread)
             obu_thread.start()
-            print("GOING TO START THE THREAD OF OBU"+str(self.OBUs[i].id))
 
     # Update the number of OBUs
     def updateNumOfObus(self, numObus):
@@ -100,7 +99,7 @@ class LaneMerge(threading.Thread):
         for i in range(0, len(self.OBUs)):
             self.OBUs[i].reset()
 
-    # Used to stop the simulation
+    # To stop the simulation
     def stop(self):
         self.rsu.stop()
         for i in range(0, len(self.OBUs)):

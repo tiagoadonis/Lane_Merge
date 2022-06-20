@@ -14,10 +14,13 @@
         <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
         
         <script>
+            // An array with all the OBUs
             var OBUs = []
+            
             // Create an info window to share between markers.
             const infoWindow = new google.maps.InfoWindow();
            
+            // Initializate the map
             function initMap() {
                 map = new google.maps.Map(document.getElementById("map"), {
                     zoom: 20,
@@ -67,7 +70,6 @@
                     infoWindow.setContent(obu_1.getTitle());
                     infoWindow.open(obu_1.getMap(), obu_1);
                 });
-
                 OBUs.push(obu_1)
 
                 // OBU 2
@@ -88,10 +90,12 @@
                     infoWindow.setContent(obu_2.getTitle());
                     infoWindow.open(obu_2.getMap(), obu_2);
                 });
-
                 OBUs.push(obu_2)
         
+                // To update the coordinates of the OBUs to the actual state at the refresh rate indicated
                 setInterval(updateCoordinates, JSON.parse('{{refresh_rate}}'))
+
+                // To update the coordinates of the OBUs to the actual state
                 function updateCoordinates() {
                     $.get('/update_map', {}, function (data) {
                         for(i = 0; i < OBUs.length; i++){
@@ -128,6 +132,8 @@
             
             var onGoing = false;
             var stop = 0;
+
+            // To update the map with the OBUs information
             function updateMap(sub){  
                 if(onGoing == true){
                     swal({
@@ -170,8 +176,6 @@
                             });
 
                             OBUs.push(obu_3);
-                            // console.log("There are: "+OBUs.length+" OBUs on the simulation")
-                            // console.log(OBUs)
                         }
                         // Going to add OBU 4
                         else if(OBUs.length == 3){
@@ -192,8 +196,6 @@
                             });
 
                             OBUs.push(obu_4);
-                            // console.log("There are: "+OBUs.length+" OBUs on the simulation")
-                            // console.log(OBUs)
                         }
                     }
                     // Some OBUs are deleted
@@ -204,8 +206,6 @@
                             OBUs.pop();
                             document.getElementById('obu_3').innerText = "-- km/h";
                             document.getElementById('obu_3_state').innerText = "-------";
-                            // console.log("There are: "+OBUs.length+" OBUs on the simulation")
-                            // console.log(OBUs)
                         }
                         // Going to delete OBU 4
                         else if(OBUs.length == 4){
@@ -213,17 +213,15 @@
                             OBUs.pop();
                             document.getElementById('obu_4').innerText = "-- km/h";
                             document.getElementById('obu_4_state').innerText = "-------";
-                            // console.log("There are: "+OBUs.length+" OBUs on the simulation")
-                            // console.log(OBUs)
                         }
-                    }
-                
+                    }                
                     $.post('/update_num_obus', {"msg": OBUs.length});
                 }
             }
 
             var count = 0;
 
+            // The start button pressed event
             function startPressed() {
                 var data = "Start Pressed";
                 count++; 
@@ -231,12 +229,14 @@
                 onGoing = true;
             }
 
+            // The stop button pressed event
             function stopPressed() {
                 var data = "Stop Pressed";
                 $.post('/update_start_state', {"msg": data});
                 stop = 1;
             }
 
+            // The reset button pressed event
             function resetPressed() {
                 var data = "Reset Pressed";
                 if(stop == 1){

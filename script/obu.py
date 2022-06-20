@@ -12,20 +12,17 @@ from shapely.geometry import Point, Polygon
 # Speed values
 speed_values = [60, 80, 100, 120, 140]
 
-# Delta distance - the default move distance that a OBU mades 
+# Delta distance - the default move distance of an OBU  
 delta_dist = 0.05
 
-# TODO -> i don't use the abort merge
 # DENM "causeCodes" and "subCauseCodes"
 causeCodes = {"Approaching Merge": 31, "Merge situation": 32, "Change position": 33, 
               "Reduce the speed": 34, "Increase the speed": 35, "Mantain speed": 36}
 
 # The causeCode "Merge situation" has the following subCauseCodes
-subCauseCodes = {"Wants to merge": 41, "Going to merge": 42, "Merge done": 43, "Abort merge": 44}
+subCauseCodes = {"Wants to merge": 41, "Going to merge": 42, "Merge done": 43}
 
-# TODO -> change the variables and function names -> put '_' (underscore) between the words 
-
-# The class taht represents the OBUs
+# The class that represents the OBU
 class OBU(threading.Thread):
     ip: string
     id: int
@@ -47,7 +44,6 @@ class OBU(threading.Thread):
     reducing: int  
     change_pos: bool
     second_lane_clear: bool
-    
     lane_clear_4: bool
     have_an_obu_behind: bool
     obu_id_behind_me: int
@@ -75,7 +71,6 @@ class OBU(threading.Thread):
         self.reducing = 0           # 0) not reducing | 1) reducing | 2) reducing to change | -1) to increase speed to 140km/h  
         self.change_pos = False
         self.second_lane_clear = False
-
         self.lane_clear_4 = False
         self.have_an_obu_behind = False
         self.obu_id_behind_me = -1
@@ -99,7 +94,6 @@ class OBU(threading.Thread):
         result = self.client.publish("vanetza/in/cam", repr(msg))
         status = result[0]
 
-        # DEBUG ONLY
         if status == 0:
             print("OBU_"+str(self.id)+" sent CAM: Latitude: "+str(self.truncate(data[0], 7))+
                   ", Longitude: "+str(self.truncate(data[1], 7))+", Speed: "+str(data[2]))
@@ -118,14 +112,12 @@ class OBU(threading.Thread):
         result = self.client.publish("vanetza/in/denm", repr(msg))
         status = result[0]
 
-        # DEBUG ONLY
         if status == 0:
             print("OBU_"+str(self.id)+" sent DENM: Latitude: "+str(self.truncate(data[0], 7))+", Longitude: "
                   +str(self.truncate(data[1], 7))+", CauseCode: "+str(data[2])+", SubCauseCode: "+str(data[3]))
 
     # Gets the message received on the subscribes topics
     def get_sub_msg(self, client, userdata, msg):
-        # print("OBU_"+str(self.id)+": received "+msg.payload.decode())
         msg_type = msg.topic
         msg = json.loads(msg.payload.decode())
 
@@ -154,14 +146,17 @@ class OBU(threading.Thread):
                 if(data["speed"] > 0):
                     self.tot_obus+=1
 
+            # To gather some information about the state of the first main lane near the merge point (OBU_1)
             if(self.id == 1):
                 if(data["speed"] > 0):
                     self.checkIfFirstLaneIsClear(data)
 
+            # To gather some information about the state of the second main lane near the merge point (OBU_3)
             if(self.id == 3):
                 if(data["speed"] > 0):
                     self.checkIfSecondLaneIsClear(data)  
 
+            # To inform the OBU_4 about the OBU behind him near the merge point 
             if(self.id == 4):
                 if(data["speed"] > 0):
                     self.iGotAnObuBehind(data)
@@ -180,29 +175,32 @@ class OBU(threading.Thread):
         # Create the start postion of the OBU
         start = geopy.Point(self.start_pos[0], self.start_pos[1])
 
+        # Auxiliary variables
         i, j, k, l = 0, 0, 0, 0
+
+        # Begin the life cycle of the OBU
         while not self.done:
             if (i == 1):
                 self.second_iteraction = True
                 print("\x1b[0;37;43m"+"OBU_"+str(self.id)+" initial state: \""+str(self.state)+"\""+"\x1b[0m")
             if(i > 1):
                 self.second_iteraction = False
-                # print("OBU_"+str(self.id)+"NUM OF OTHERS OBUS: "+str(self.tot_obus)+" ----------------------------")
 
             # If it's the OBU that starts runing on the merge lane of the highway
             if(self.id == 1):
                 if (i < 7):
                     pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 222)
-                    # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
+                # Adjust the position after the curve
                 else:
                     pos = geopy.distance.geodesic(meters = self.speed*delta_dist*i).destination(start, 223)
-                    # print("["+str(pos.latitude)+", "+str(pos.longitude)+"],")
 
                 # Adjust the direction when merging
                 if(self.merging):
+                    # If the merge OBU is reducing his speed
                     if(self.reducing == 1):
                         pos = self.reducingToMergeSpeedPosMergeOBU(start, i, j)
                         j+=1
+                    # If the merge OBU is mantaining his speed
                     elif(self.reducing == 0):
                         pos = self.mergingPos(start, i)
 
@@ -233,17 +231,20 @@ class OBU(threading.Thread):
 
             # Publish the CAM msg
             self.publish_CAM([pos.latitude, pos.longitude, self.speed])
+            # Updating the actual position of the OBU
             self.updatePos([self.truncate(pos.latitude, 7), self.truncate(pos.longitude, 7)])
 
             i+=1
             # Send the CAMs at a 1Hz frequency
             sleep(1)
 
+        # Disconnect the MQTT subscription 
         self.client.loop_stop()
         self.client.disconnect()
 
     # Processes the events received by the DENM messages
     def processEvents(self, data):
+        # Unfactorizing the coordinates received
         unfactor_coords = self.unfactorCoords([data["latitude"], data["longitude"]])
 
         # If an OBU is approaching the merge point
@@ -262,8 +263,8 @@ class OBU(threading.Thread):
         #  If the OBU wants to merge and receives an DENM message 
         if(self.wants_to_merge == True):
             if(self.tot_obus == 3):
-                # if the lane is not clear
                 if(self.lane_clear == False):
+
                     # The OBU who's on the way informs that he's gonna mantain his speed -> The merge OBU needs to reduce his speed
                     if(data["causeCode"] ==  causeCodes["Mantain speed"]):
                         if(data["stationID"] == self.blocking_obu_id):
@@ -282,6 +283,7 @@ class OBU(threading.Thread):
                             self.state = "Merging"
                             print("\x1b[0;37;43m"+"OBU_"+str(self.id)+" change state: \""+str(self.state)+"\""+"\x1b[0m")
 
+                    # The OBU who's on the way informs that he's gonna reduce his speed -> The merge OBU needs to increase his speed
                     elif(data["causeCode"] ==  causeCodes["Reduce the speed"]):
                         if(data["stationID"] == self.blocking_obu_id):
                             self.wants_to_merge = False
@@ -395,11 +397,8 @@ class OBU(threading.Thread):
 
         # If the OBU wants to change the position for the next lane
         if(self.change_pos):
-            # TODO -> implement if the lane is clear
-            if(self.second_lane_clear):
-                pass
             # Informs that he's gonna reduce his speed -> The merge OBU will increase his speed
-            else:
+            if(self.second_lane_clear == False):
                 print("\x1b[0;37;46m"+"OBU_"+str(self.id)+": i'm gonna reduce my speed"+"\x1b[0m")
                 self.publish_DENM( [self.actual_pos[0], self.actual_pos[1], 
                                     causeCodes["Reduce the speed"], causeCodes["Reduce the speed"]] )
@@ -431,10 +430,11 @@ class OBU(threading.Thread):
         unfactor_coords = self.unfactorCoords([data["latitude"], data["longitude"]])
         point = Point(self.truncate(unfactor_coords[0], 7), self.truncate(unfactor_coords[1], 7))
 
-        # Create a square
+        # Create a polygon
         coords = [(40.6404040, -8.6632890), (40.6403800, -8.6632360), (40.6402510, -8.6634820), (40.6402370, -8.6634330)]
         poly = Polygon(coords)
 
+        # Check if the coordinates are inside the polygon
         if(data["stationID"] == 3):
             if(poly.contains(point) == False):
                 print("\x1b[0;37;42m"+"OBU_"+str(self.id)+": i don't have nobody behind me near an merge point"+"\x1b[0m")
@@ -451,10 +451,11 @@ class OBU(threading.Thread):
         unfactor_coords = self.unfactorCoords([data["latitude"], data["longitude"]])
         point = Point(self.truncate(unfactor_coords[0], 7), self.truncate(unfactor_coords[1], 7))
         
-        # Create a square
+        # Create a polygon
         coords = [(40.6403720, -8.6632580), (40.6403560, -8.6632180), (40.6401630, -8.6635340), (40.6401410, -8.6634910)]
         poly = Polygon(coords)
 
+        # Check if the coordinates are inside the polygon
         if(data["stationID"] == 2):
             if(poly.contains(point) == False):
                 print("\x1b[0;37;42m"+"OBU_"+str(self.id)+
@@ -472,10 +473,11 @@ class OBU(threading.Thread):
         unfactor_coords = self.unfactorCoords([data["latitude"], data["longitude"]])
         point = Point(self.truncate(unfactor_coords[0], 7), self.truncate(unfactor_coords[1], 7))
 
-        # Create a square
+        # Create a polygon
         coords = [(40.6403890, -8.6633100), (40.6403660, -8.6632630), (40.6401800, -8.6635690), (40.6401600, -8.6635250)]
         poly = Polygon(coords)
 
+        # Check if the coordinates are inside the polygon
         if(self.tot_obus == 1):
             if(data["stationID"] == 2):
                 if(poly.contains(point) == False):
@@ -555,10 +557,11 @@ class OBU(threading.Thread):
         # Create Point objects
         point = Point(self.actual_pos[0], self.actual_pos[1])
 
-        # Create a square
+        # Create a polygon
         coords = [(40.6403890, -8.6633100), (40.6403660, -8.6632630), (40.6401800, -8.6635690), (40.6401600, -8.6635250)]
         poly = Polygon(coords)
 
+        # Check if the coordinates are inside the polygon
         return poly.contains(point)
 
     # To increase the speed of an main OBU when it receives an "change position" DENM message from another main OBU
@@ -650,7 +653,7 @@ class OBU(threading.Thread):
 
         return pos
 
-    # Decreases the OBU speed
+    # Reduces the OBU speed
     def reduceSpeed(self):
         for i in range(0, len(speed_values)):
             if(speed_values[i] == self.speed):
@@ -671,7 +674,6 @@ class OBU(threading.Thread):
     # To update the actual positions coordinates
     def updatePos(self, actual_pos):
         self.actual_pos = actual_pos
-        # print("OBU_"+str(self.id)+" is on: "+str(self.actual_pos))
 
     # Developer-friendly string representation of the object
     def obu_status(self):
