@@ -121,12 +121,6 @@
                                 document.getElementById('obu_4').innerText = data.OBU_4.speed + " km/h";
                                 document.getElementById('obu_4_state').innerText = data.OBU_4.state;
                             }
-                            // OBU 5
-                            else if(i == 4){
-                                obu.setPosition(new google.maps.LatLng(data.OBU_5.actual_pos[0], data.OBU_5.actual_pos[1]));
-                                document.getElementById('obu_5').innerText = data.OBU_5.speed + " km/h";
-                                document.getElementById('obu_5_state').innerText = data.OBU_5.state;
-                            }
                         }
                     });
                 }
@@ -148,8 +142,8 @@
                     if(num == 2 && sub == -1){
                         tot_obus = 2;
                     }
-                    else if(num == 5 && sub == 1){
-                        tot_obus = 5;
+                    else if(num == 4 && sub == 1){
+                        tot_obus = 4;
                     }
                     else{
                         tot_obus = parseInt(num) + parseInt(sub);
@@ -201,28 +195,6 @@
                             // console.log("There are: "+OBUs.length+" OBUs on the simulation")
                             // console.log(OBUs)
                         }
-                        // Going to add OBU 5
-                        else if(OBUs.length == 4){
-                            const obu_5 = new google.maps.Marker({
-                                position: new google.maps.LatLng(40.640093, -8.663590),
-                                map: map,
-                                icon: {
-                                    url: "static/vehicle_1.png",
-                                    scaledSize: new google.maps.Size(50, 50)
-                                },
-                                title: "OBU_5",
-                            });
-                        
-                            obu_5.addListener("click", () => {
-                                infoWindow.close();
-                                infoWindow.setContent(obu_5.getTitle());
-                                infoWindow.open(obu_5.getMap(), obu_5);
-                            });
-
-                            OBUs.push(obu_5);
-                            // console.log("There are: "+OBUs.length+" OBUs on the simulation")
-                            // console.log(OBUs)
-                        }
                     }
                     // Some OBUs are deleted
                     else if(OBUs.length > tot_obus){                    
@@ -241,15 +213,6 @@
                             OBUs.pop();
                             document.getElementById('obu_4').innerText = "-- km/h";
                             document.getElementById('obu_4_state').innerText = "-------";
-                            // console.log("There are: "+OBUs.length+" OBUs on the simulation")
-                            // console.log(OBUs)
-                        }
-                        // Going to delete OBU 5
-                        else if(OBUs.length == 5){
-                            OBUs[OBUs.length-1].setMap(null)
-                            OBUs.pop();
-                            document.getElementById('obu_5').innerText = "-- km/h";
-                            document.getElementById('obu_5_state').innerText = "-------";
                             // console.log("There are: "+OBUs.length+" OBUs on the simulation")
                             // console.log(OBUs)
                         }
@@ -342,16 +305,6 @@
                 </div>
                 <hr>
 
-                <!-- OBU 5 Informations -->
-                <h3>OBU_5</h3>
-                <div class="info">
-                    <p>
-                        <i class="fa-solid fa-gauge-high"></i> <span id="obu_5"> -- km/h </span> &emsp;
-                        <i class="fa-solid fa-car-side"></i> <span id="obu_5_state"> ------- </span>
-                    </p>
-                </div>
-                <hr>
-
                 <p style="text-align: center; margin-bottom: 0px"><b>Notes:</b> To reset the simulation press the</p>
                 <p style="text-align: center; margin-top: 0px; margin-bottom: 0px"> stop button first.To change the number of OBUs</p>
                 <p style="text-align: center; margin-top: 0px">press the stop first and then the reset button.</p>
@@ -378,7 +331,7 @@
 
                     plus.addEventListener("click", ()=>{
                         if(onGoing == false){
-                            if(a < 5){
+                            if(a < 4){
                                 a++;
                                 num.innerText = a;
                             }
